@@ -1,0 +1,30 @@
+{
+  "name": "agent-marketplace-registry",
+  "version": "1.0.0",
+  "description": "Managed by Symphony orchestrator",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajesh-ms/agent-marketplace.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rajesh-ms/agent-marketplace/issues"
+  },
+  "homepage": "https://github.com/rajesh-ms/agent-marketplace#readme",
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
