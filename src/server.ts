@@ -40,6 +40,14 @@ async function routeRequest(registry: AgentRegistry, request: IncomingMessage, r
     return;
   }
 
+  if (method === "GET" && segments.length === 2 && segments[0] === "marketplace" && segments[1] === "overview") {
+    const requester = url.searchParams.get("requester") ?? undefined;
+    const limit = url.searchParams.get("limit");
+    const result = registry.getMarketplaceOverview(requester, limit ? Number.parseInt(limit, 10) : undefined);
+    sendJson(response, 200, result);
+    return;
+  }
+
   if (method === "GET" && segments.length === 2 && segments[0] === "agents") {
     const name = segments[1]!;
     const requester = url.searchParams.get("requester") ?? undefined;
@@ -88,6 +96,9 @@ function parseSearchFilters(searchParams: URLSearchParams): SearchFilters {
   const capability = searchParams.get("capability");
   const useCase = searchParams.get("useCase");
   const owner = searchParams.get("owner");
+  const protocol = searchParams.get("protocol");
+  const inputType = searchParams.get("inputType");
+  const outputType = searchParams.get("outputType");
   const status = searchParams.get("status");
   const requester = searchParams.get("requester");
 
@@ -97,6 +108,9 @@ function parseSearchFilters(searchParams: URLSearchParams): SearchFilters {
     ...(capability ? { capability } : {}),
     ...(useCase ? { useCase } : {}),
     ...(owner ? { owner } : {}),
+    ...(protocol ? { protocol } : {}),
+    ...(inputType ? { inputType } : {}),
+    ...(outputType ? { outputType } : {}),
     ...(status ? { status: status as NonNullable<SearchFilters["status"]> } : {}),
     ...(requester ? { requester } : {}),
     ...(deprecatedParam === null ? {} : { deprecated: deprecatedParam === "true" }),

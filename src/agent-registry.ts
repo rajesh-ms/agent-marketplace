@@ -4,11 +4,16 @@ import {
   type AgentCardInput,
   type AgentRecord,
   type HeartbeatInput,
+  type MarketplaceAgentSummary,
+  type MarketplaceOverview,
   type PaginatedResult,
   type ResolveOptions,
   type ResolveResult,
   type SearchFilters,
 } from "./models.js";
+
+const LIFECYCLE_STATUSES = new Set(["active", "inactive", "degraded", "deprecated"]);
+const ISO_8601_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 class RegistryError extends Error {
   constructor(
@@ -88,12 +93,19 @@ export class AgentRegistry {
     const pageSize = parsePositiveInteger(filters.pageSize, "pageSize", 10);
     const action = filters.action ?? "view";
 
+    if (filters.status) {
+      validateLifecycleStatus(filters.status, "status");
+    }
+
     const filtered = this.records()
       .filter((record) => this.isAllowed(record, filters.requester, action))
       .filter((record) => !filters.tag || includesToken(record.tags, filters.tag))
       .filter((record) => !filters.capability || includesToken(record.capabilities, filters.capability))
       .filter((record) => !filters.useCase || includesToken(record.useCases, filters.useCase))
       .filter((record) => !filters.owner || normalizeToken(record.ownerTeam) === normalizeToken(filters.owner))
+      .filter((record) => !filters.protocol || includesToken(record.supportedProtocols, filters.protocol))
+      .filter((record) => !filters.inputType || includesToken(record.inputTypes, filters.inputType))
+      .filter((record) => !filters.outputType || includesToken(record.outputTypes, filters.outputType))
       .filter((record) => !filters.status || record.status === filters.status)
       .filter((record) => filters.deprecated === undefined || record.deprecated === filters.deprecated)
       .sort((left, right) => {
@@ -115,9 +127,8 @@ export class AgentRegistry {
       .filter((record) => normalizeToken(record.name) === normalizeToken(name))
       .filter((record) => !options.version || record.version === options.version);
 
-    const candidates = allCandidates
-      .filter((record) => normalizeToken(record.name) === normalizeToken(name))
-      .filter((record) => this.isAllowed(record, options.requester, action))
+    const authorizedCandidates = allCandidates.filter((record) => this.isAllowed(record, options.requester, action));
+    const candidates = authorizedCandidates
       .filter((record) => record.status !== "inactive")
       .filter((record) => !record.deprecated)
       .sort((left, right) => compareVersions(right.version, left.version));
@@ -125,6 +136,10 @@ export class AgentRegistry {
     const match = candidates[0];
 
     if (!match) {
+      if (authorizedCandidates.length > 0) {
+        throw new NotFoundError(`No callable agent found for ${name}${options.version ? `@${options.version}` : ""}.`);
+      }
+
       if (allCandidates.length > 0) {
         throw new AccessDeniedError(`Requester ${options.requester ?? "anonymous"} cannot ${action} ${name}.`);
       }
@@ -142,6 +157,27 @@ export class AgentRegistry {
       outputTypes: [...match.outputTypes],
       status: match.status,
       deprecated: match.deprecated,
+    };
+  }
+
+  getMarketplaceOverview(requester?: string, limit = 5): MarketplaceOverview {
+    const cappedLimit = parsePositiveInteger(limit, "limit", 5);
+    const visible = this.records()
+      .filter((record) => this.isAllowed(record, requester, "view"))
+      .sort((left, right) => compareRecency(right, left));
+    const callable = visible.filter(
+      (record) => this.isAllowed(record, requester, "invoke") && record.status !== "inactive" && !record.deprecated,
+    );
+
+    return {
+      visibleAgents: visible.length,
+      callableAgents: callable.length,
+      degradedAgents: visible.filter((record) => record.status === "degraded").length,
+      deprecatedAgents: visible.filter((record) => record.deprecated).length,
+      byCapability: buildFacetCounts(visible.flatMap((record) => record.capabilities)),
+      byTag: buildFacetCounts(visible.flatMap((record) => record.tags)),
+      byOwner: buildFacetCounts(visible.map((record) => record.ownerTeam)),
+      recentlyUpdated: visible.slice(0, cappedLimit).map(toMarketplaceSummary),
     };
   }
 
@@ -317,8 +353,7 @@ function requireUrl(value: string, field: string): string {
 }
 
 function validateLifecycleStatus(value: string, field: string): void {
-  const allowed = new Set(["active", "inactive", "degraded", "deprecated"]);
-  if (!allowed.has(value)) {
+  if (!LIFECYCLE_STATUSES.has(value)) {
     throw new ValidationError(`${field} must be one of active, inactive, degraded, or deprecated.`);
   }
 }
@@ -344,7 +379,15 @@ function normalizeToken(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function assertIsoDate(value: string, field: string): void {
+function assertIsoDate(value: unknown, field: string): void {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new ValidationError(`${field} must be a valid ISO-8601 timestamp.`);
+  }
+
+  if (!ISO_8601_UTC_PATTERN.test(value)) {
+    throw new ValidationError(`${field} must be a valid ISO-8601 timestamp.`);
+  }
+
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     throw new ValidationError(`${field} must be a valid ISO-8601 timestamp.`);
@@ -376,6 +419,49 @@ function compareVersions(left: string, right: string): number {
   }
 
   return left.localeCompare(right);
+}
+
+function compareRecency(left: AgentRecord, right: AgentRecord): number {
+  return recencyValue(left) - recencyValue(right);
+}
+
+function recencyValue(record: AgentRecord): number {
+  return Date.parse(record.lastHeartbeat ?? record.updatedAt);
+}
+
+function buildFacetCounts(values: string[]): Array<{ value: string; count: number }> {
+  const counts = new Map<string, { value: string; count: number }>();
+
+  for (const value of values) {
+    const existing = counts.get(normalizeToken(value));
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+
+    counts.set(normalizeToken(value), {
+      value,
+      count: 1,
+    });
+  }
+
+  return [...counts.values()].sort((left, right) => {
+    const countDiff = right.count - left.count;
+    return countDiff !== 0 ? countDiff : left.value.localeCompare(right.value);
+  });
+}
+
+function toMarketplaceSummary(record: AgentRecord): MarketplaceAgentSummary {
+  return {
+    name: record.name,
+    version: record.version,
+    ownerTeam: record.ownerTeam,
+    status: record.status,
+    capabilities: [...record.capabilities],
+    tags: [...record.tags],
+    updatedAt: record.updatedAt,
+    ...(record.lastHeartbeat ? { lastHeartbeat: record.lastHeartbeat } : {}),
+  };
 }
 
 function clone<T>(value: T): T {

@@ -1,0 +1,28 @@
+{
+  "workItemId": 4,
+  "project": "agent-marketplace",
+  "historyComment": "Built a TypeScript/Node.js AI Marketplace service with in-memory agent registration, governed catalog search, runtime resolution, heartbeat updates, and a marketplace overview endpoint. Added unit and HTTP integration tests, plus repository documentation in README.md, AGENTS.md, docs/architecture.md, and docs/decisions.md. Verified with npm run check, npm test, and npm run build.",
+  "patches": {
+    "setDoing": [
+      {
+        "op": "replace",
+        "path": "/fields/System.State",
+        "value": "Doing"
+      }
+    ],
+    "addHistory": [
+      {
+        "op": "add",
+        "path": "/fields/System.History",
+        "value": "Built a TypeScript/Node.js AI Marketplace service with in-memory agent registration, governed catalog search, runtime resolution, heartbeat updates, and a marketplace overview endpoint. Added unit and HTTP integration tests, plus repository documentation in README.md, AGENTS.md, docs/architecture.md, and docs/decisions.md. Verified with npm run check, npm test, and npm run build."
+      }
+    ],
+    "setDone": [
+      {
+        "op": "replace",
+        "path": "/fields/System.State",
+        "value": "Done"
+      }
+    ]
+  }
+}

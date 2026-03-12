@@ -42,6 +42,9 @@ export interface SearchFilters {
   capability?: string;
   useCase?: string;
   owner?: string;
+  protocol?: string;
+  inputType?: string;
+  outputType?: string;
   status?: LifecycleStatus;
   deprecated?: boolean;
   requester?: string;
@@ -79,4 +82,31 @@ export interface ResolveResult {
 export interface HeartbeatInput {
   timestamp?: string;
   status?: LifecycleStatus;
+}
+
+export interface FacetCount {
+  value: string;
+  count: number;
+}
+
+export interface MarketplaceAgentSummary {
+  name: string;
+  version: string;
+  ownerTeam: string;
+  status: LifecycleStatus;
+  capabilities: string[];
+  tags: string[];
+  updatedAt: string;
+  lastHeartbeat?: string;
+}
+
+export interface MarketplaceOverview {
+  visibleAgents: number;
+  callableAgents: number;
+  degradedAgents: number;
+  deprecatedAgents: number;
+  byCapability: FacetCount[];
+  byTag: FacetCount[];
+  byOwner: FacetCount[];
+  recentlyUpdated: MarketplaceAgentSummary[];
 }
