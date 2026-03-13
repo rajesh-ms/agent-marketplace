@@ -50,10 +50,85 @@ export interface CompareInsights {
   itemInsights: CompareItemInsight[];
 }
 
+export interface ComparedWorkspaceItem {
+  item: MarketplaceItem;
+  isVisible: boolean;
+}
+
+export interface CompareWorkspaceSummary {
+  items: ComparedWorkspaceItem[];
+  visibleCount: number;
+  hiddenCount: number;
+}
+
+export interface MarketplaceSurfaceMapRow {
+  item: MarketplaceItem;
+  connectedItems: MarketplaceItem[];
+}
+
+export interface MarketplaceSurfaceMap {
+  agentRows: MarketplaceSurfaceMapRow[];
+  mcpRows: MarketplaceSurfaceMapRow[];
+}
+
+export interface MarketplaceRelationshipPreview {
+  visibleItems: MarketplaceItem[];
+  remainingCount: number;
+}
+
+export interface MarketplaceRelationshipContext extends MarketplaceRelationshipPreview {
+  hiddenCount: number;
+  totalCount: number;
+}
+
+export interface MarketplaceKindSummary {
+  kind: MarketplaceKind;
+  count: number;
+  averageTrust: number;
+  readyCount: number;
+  scalingCount: number;
+  pilotCount: number;
+  liveConnections: number;
+  topListing: MarketplaceItem | null;
+}
+
+export interface MarketplaceCounterpartPreview {
+  counterpartKind: MarketplaceKind;
+  visibleItems: MarketplaceItem[];
+  remainingCount: number;
+}
+
 export interface MarketplaceFacetOptionCount {
   value: string;
   count: number;
 }
+
+export interface MarketplaceKindOptionCount {
+  value: MarketplaceKind;
+  count: number;
+}
+
+export interface MarketplaceStatusOptionCount {
+  value: MarketplaceStatus;
+  count: number;
+}
+
+const normalizePresetSearchValue = (value: string) => value.trim().toLowerCase();
+const matchesItemSearch = (item: MarketplaceItem, searchValue: string) => {
+  const normalizedSearch = searchValue.trim().toLowerCase();
+
+  return (
+    normalizedSearch.length === 0 ||
+    [item.name, item.category, item.provider, item.description, ...item.tags]
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedSearch)
+  );
+};
+
+const matchesItemCapability = (item: MarketplaceItem, capability: string) =>
+  capability === 'All' ||
+  item.capabilities.some((entry) => entry.toLowerCase() === capability.toLowerCase());
 
 export const toggleComparedItem = (
   comparedIds: string[],
@@ -102,22 +177,13 @@ export const filterMarketplaceItems = (
     categoryFilter
   }: MarketplaceFilters
 ) => {
-  const normalizedSearch = searchValue.trim().toLowerCase();
-
   return items.filter((item) => {
     const matchesKind = kindFilter === 'all' || item.kind === kindFilter;
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     const matchesProvider = providerFilter === 'All providers' || item.provider === providerFilter;
     const matchesCategory = categoryFilter === 'All categories' || item.category === categoryFilter;
-    const matchesSearch =
-      normalizedSearch.length === 0 ||
-      [item.name, item.category, item.provider, item.description, ...item.tags]
-        .join(' ')
-        .toLowerCase()
-        .includes(normalizedSearch);
-    const matchesCapability =
-      activeCapability === 'All' ||
-      item.capabilities.some((entry) => entry.toLowerCase() === activeCapability.toLowerCase());
+    const matchesSearch = matchesItemSearch(item, searchValue);
+    const matchesCapability = matchesItemCapability(item, activeCapability);
 
     return (
       matchesKind &&
@@ -129,6 +195,101 @@ export const filterMarketplaceItems = (
     );
   });
 };
+
+export const getFocusFiltersForItem = (
+  item: MarketplaceItem,
+  filters: MarketplaceFilters
+): MarketplaceFilters => {
+  const matchesSearch = matchesItemSearch(item, filters.searchValue);
+  const matchesCapability = matchesItemCapability(item, filters.activeCapability);
+
+  return {
+    kindFilter: filters.kindFilter === 'all' || item.kind === filters.kindFilter ? filters.kindFilter : 'all',
+    searchValue: matchesSearch ? filters.searchValue : '',
+    activeCapability: matchesCapability ? filters.activeCapability : 'All',
+    statusFilter: filters.statusFilter === 'all' || item.status === filters.statusFilter ? filters.statusFilter : 'all',
+    providerFilter:
+      filters.providerFilter === 'All providers' || item.provider === filters.providerFilter
+        ? filters.providerFilter
+        : 'All providers',
+    categoryFilter:
+      filters.categoryFilter === 'All categories' || item.category === filters.categoryFilter
+        ? filters.categoryFilter
+        : 'All categories'
+  };
+};
+
+export const getFocusFiltersForItems = (
+  items: MarketplaceItem[],
+  filters: MarketplaceFilters
+): MarketplaceFilters => {
+  if (items.length === 0) {
+    return filters;
+  }
+
+  return {
+    kindFilter:
+      filters.kindFilter === 'all' || items.every((item) => item.kind === filters.kindFilter)
+        ? filters.kindFilter
+        : 'all',
+    searchValue: items.every((item) => matchesItemSearch(item, filters.searchValue))
+      ? filters.searchValue
+      : '',
+    activeCapability: items.every((item) => matchesItemCapability(item, filters.activeCapability))
+      ? filters.activeCapability
+      : 'All',
+    statusFilter:
+      filters.statusFilter === 'all' || items.every((item) => item.status === filters.statusFilter)
+        ? filters.statusFilter
+        : 'all',
+    providerFilter:
+      filters.providerFilter === 'All providers' ||
+      items.every((item) => item.provider === filters.providerFilter)
+        ? filters.providerFilter
+        : 'All providers',
+    categoryFilter:
+      filters.categoryFilter === 'All categories' ||
+      items.every((item) => item.category === filters.categoryFilter)
+        ? filters.categoryFilter
+        : 'All categories'
+  };
+};
+
+export const getContextFiltersForItem = (
+  item: MarketplaceItem,
+  filters: MarketplaceFilters,
+  overrides: Partial<MarketplaceFilters>
+): MarketplaceFilters =>
+  getFocusFiltersForItem(item, {
+    ...filters,
+    ...overrides
+  });
+
+export const getContextFiltersForItems = (
+  anchorItem: MarketplaceItem,
+  items: MarketplaceItem[],
+  filters: MarketplaceFilters
+): MarketplaceFilters => getContextFiltersForItem(anchorItem, getFocusFiltersForItems(items, filters), {});
+
+export const matchesMarketplacePreset = (
+  filters: MarketplaceFilters,
+  sortBy: MarketplaceSort,
+  preset: MarketplaceViewPreset
+) =>
+  filters.kindFilter === preset.filters.kindFilter &&
+  normalizePresetSearchValue(filters.searchValue) ===
+    normalizePresetSearchValue(preset.filters.searchValue) &&
+  filters.activeCapability === preset.filters.activeCapability &&
+  filters.statusFilter === preset.filters.statusFilter &&
+  filters.providerFilter === preset.filters.providerFilter &&
+  filters.categoryFilter === preset.filters.categoryFilter &&
+  sortBy === preset.sortBy;
+
+export const getMatchingMarketplacePreset = (
+  filters: MarketplaceFilters,
+  sortBy: MarketplaceSort,
+  presets: MarketplaceViewPreset[] = marketplaceViewPresets
+) => presets.find((preset) => matchesMarketplacePreset(filters, sortBy, preset)) ?? null;
 
 export const sortMarketplaceItems = (items: MarketplaceItem[], sortBy: MarketplaceSort) => {
   const sorted = [...items];
@@ -170,6 +331,27 @@ export const getMarketplaceStats = (items: MarketplaceItem[]) => {
 
   return { agents, mcps, averageTrust, liveConnections };
 };
+
+export const getMarketplaceKindSummaries = (
+  items: MarketplaceItem[]
+): MarketplaceKindSummary[] =>
+  (['agent', 'mcp'] as const).map((kind) => {
+    const kindItems = items.filter((item) => item.kind === kind);
+    const stats = getMarketplaceStats(kindItems);
+    const statuses = getStatusSummary(kindItems);
+    const topListing = sortMarketplaceItems(kindItems, 'trust')[0] ?? null;
+
+    return {
+      kind,
+      count: kindItems.length,
+      averageTrust: stats.averageTrust,
+      readyCount: statuses.ready,
+      scalingCount: statuses.scaling,
+      pilotCount: statuses.pilot,
+      liveConnections: stats.liveConnections,
+      topListing
+    };
+  });
 
 export const getStatusSummary = (items: MarketplaceItem[]) => ({
   ready: items.filter((item) => item.status === 'Ready').length,
@@ -254,6 +436,36 @@ export const getFacetOptionCounts = (
   }));
 };
 
+export const getKindOptionCounts = (
+  items: MarketplaceItem[],
+  filters: MarketplaceFilters
+): MarketplaceKindOptionCount[] => {
+  const itemsMatchingOtherFilters = filterMarketplaceItems(items, {
+    ...filters,
+    kindFilter: 'all'
+  });
+
+  return (['agent', 'mcp'] as const).map((value) => ({
+    value,
+    count: itemsMatchingOtherFilters.filter((item) => item.kind === value).length
+  }));
+};
+
+export const getStatusOptionCounts = (
+  items: MarketplaceItem[],
+  filters: MarketplaceFilters
+): MarketplaceStatusOptionCount[] => {
+  const itemsMatchingOtherFilters = filterMarketplaceItems(items, {
+    ...filters,
+    statusFilter: 'all'
+  });
+
+  return (['Ready', 'Scaling', 'Pilot'] as const).map((value) => ({
+    value,
+    count: itemsMatchingOtherFilters.filter((item) => item.status === value).length
+  }));
+};
+
 export const getFeaturedItems = (items: MarketplaceItem[]) =>
   (['agent', 'mcp'] as const)
     .map((kind) =>
@@ -270,10 +482,85 @@ export const getRelatedItems = (items: MarketplaceItem[], selectedItem: Marketpl
       (selectedItem.linkedItemIds.includes(item.id) || item.linkedItemIds.includes(selectedItem.id))
   );
 
+export const getRelationshipPreview = (
+  items: MarketplaceItem[],
+  selectedItem: MarketplaceItem,
+  maxVisibleItems = 2
+): MarketplaceRelationshipPreview => {
+  const relatedItems = getRelatedItems(items, selectedItem).sort(
+    (left, right) => right.trustScore - left.trustScore || left.name.localeCompare(right.name)
+  );
+
+  return {
+    visibleItems: relatedItems.slice(0, maxVisibleItems),
+    remainingCount: Math.max(0, relatedItems.length - maxVisibleItems)
+  };
+};
+
+export const getRelationshipContext = (
+  allItems: MarketplaceItem[],
+  visibleItems: MarketplaceItem[],
+  selectedItem: MarketplaceItem,
+  maxVisibleItems = 2
+): MarketplaceRelationshipContext => {
+  const relatedItems = getRelatedItems(allItems, selectedItem).sort(
+    (left, right) => right.trustScore - left.trustScore || left.name.localeCompare(right.name)
+  );
+  const visibleItemIds = new Set(visibleItems.map((item) => item.id));
+  const visibleRelatedItems = relatedItems.filter((item) => visibleItemIds.has(item.id));
+
+  return {
+    visibleItems: visibleRelatedItems.slice(0, maxVisibleItems),
+    remainingCount: Math.max(0, visibleRelatedItems.length - maxVisibleItems),
+    hiddenCount: Math.max(0, relatedItems.length - visibleRelatedItems.length),
+    totalCount: relatedItems.length
+  };
+};
+
+export const getMarketplaceCounterpartPreview = (
+  items: MarketplaceItem[],
+  activeKind: MarketplaceKind | 'all',
+  maxVisibleItems = 3
+): MarketplaceCounterpartPreview | null => {
+  if (activeKind === 'all') {
+    return null;
+  }
+
+  const counterpartKind: MarketplaceKind = activeKind === 'agent' ? 'mcp' : 'agent';
+  const counterpartItems = sortMarketplaceItems(
+    items.filter((item) => item.kind === counterpartKind),
+    'trust'
+  );
+
+  return {
+    counterpartKind,
+    visibleItems: counterpartItems.slice(0, maxVisibleItems),
+    remainingCount: Math.max(0, counterpartItems.length - maxVisibleItems)
+  };
+};
+
 export const getComparedItems = (items: MarketplaceItem[], comparedIds: string[]) =>
   comparedIds
     .map((id) => items.find((item) => item.id === id) ?? null)
     .filter((item): item is MarketplaceItem => Boolean(item));
+
+export const getCompareWorkspaceSummary = (
+  visibleItems: MarketplaceItem[],
+  comparedItems: MarketplaceItem[]
+): CompareWorkspaceSummary => {
+  const visibleIds = new Set(visibleItems.map((item) => item.id));
+  const items = comparedItems.map((item) => ({
+    item,
+    isVisible: visibleIds.has(item.id)
+  }));
+  const visibleCount = items.filter((entry) => entry.isVisible).length;
+
+  return {
+    items,
+    visibleCount,
+    hiddenCount: Math.max(0, items.length - visibleCount)
+  };
+};
 
 export const getCompareInsights = (items: MarketplaceItem[]): CompareInsights => {
   if (items.length === 0) {
@@ -337,6 +624,43 @@ export const getAgentStacks = (items: MarketplaceItem[]): AgentStack[] =>
       };
     })
     .sort((left, right) => right.averageTrust - left.averageTrust || left.agent.name.localeCompare(right.agent.name));
+
+export const getMarketplaceSurfaceMap = (items: MarketplaceItem[]): MarketplaceSurfaceMap => {
+  const itemsById = new Map(items.map((item) => [item.id, item] as const));
+  const agents = items.filter((item) => item.kind === 'agent');
+  const mcps = items.filter((item) => item.kind === 'mcp');
+
+  const agentRows = agents
+    .map((agent) => ({
+      item: agent,
+      connectedItems: agent.linkedItemIds
+        .map((itemId) => itemsById.get(itemId) ?? null)
+        .filter((item): item is MarketplaceItem => item !== null && item.kind === 'mcp')
+        .sort((left, right) => right.trustScore - left.trustScore || left.name.localeCompare(right.name))
+    }))
+    .sort(
+      (left, right) =>
+        right.connectedItems.length - left.connectedItems.length ||
+        right.item.trustScore - left.item.trustScore ||
+        left.item.name.localeCompare(right.item.name)
+    );
+
+  const mcpRows = mcps
+    .map((mcp) => ({
+      item: mcp,
+      connectedItems: agents
+        .filter((agent) => agent.linkedItemIds.includes(mcp.id))
+        .sort((left, right) => right.trustScore - left.trustScore || left.name.localeCompare(right.name))
+    }))
+    .sort(
+      (left, right) =>
+        right.connectedItems.length - left.connectedItems.length ||
+        right.item.trustScore - left.item.trustScore ||
+        left.item.name.localeCompare(right.item.name)
+    );
+
+  return { agentRows, mcpRows };
+};
 
 export const marketplaceViewPresets: MarketplaceViewPreset[] = [
   {

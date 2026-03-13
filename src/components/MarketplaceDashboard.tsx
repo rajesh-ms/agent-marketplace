@@ -7,13 +7,24 @@ import {
   defaultStatusSummary,
   defaultTopCategories,
   filterMarketplaceItems,
+  getContextFiltersForItem,
+  getContextFiltersForItems,
+  getFocusFiltersForItem,
   getFacetOptionCounts,
   getCompareInsights,
+  getCompareWorkspaceSummary,
   getComparedItems,
+  getMarketplaceCounterpartPreview,
   getFreshestItem,
+  getKindOptionCounts,
+  getMatchingMarketplacePreset,
   isMarketplaceItemVisible,
+  getMarketplaceKindSummaries,
+  getRelationshipContext,
   getMarketplaceStats,
+  getMarketplaceSurfaceMap,
   getRelatedItems,
+  getStatusOptionCounts,
   getStatusSummary,
   getTopCategories,
   marketplaceViewPresets,
@@ -62,7 +73,6 @@ export function MarketplaceDashboard() {
   const [sortBy, setSortBy] = useState<(typeof sortOptions)[number]['value']>('trust');
   const [selectedId, setSelectedId] = useState<string>(marketplaceItems[0].id);
   const [comparedIds, setComparedIds] = useState<string[]>([]);
-  const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => {
     const visibleItems = filterMarketplaceItems(marketplaceItems, {
@@ -76,6 +86,78 @@ export function MarketplaceDashboard() {
 
     return sortMarketplaceItems(visibleItems, sortBy);
   }, [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, sortBy, statusFilter]);
+  const kindFacetCounts = useMemo(
+    () =>
+      getKindOptionCounts(marketplaceItems, {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter,
+        categoryFilter
+      }),
+    [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
+  );
+  const statusFacetCounts = useMemo(
+    () =>
+      getStatusOptionCounts(marketplaceItems, {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter,
+        categoryFilter
+      }),
+    [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
+  );
+  const capabilityScopeCount = useMemo(
+    () =>
+      filterMarketplaceItems(marketplaceItems, {
+        kindFilter,
+        searchValue,
+        activeCapability: 'All',
+        statusFilter,
+        providerFilter,
+        categoryFilter
+      }).length,
+    [categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
+  );
+  const statusScopeCount = useMemo(
+    () =>
+      filterMarketplaceItems(marketplaceItems, {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter: 'all',
+        providerFilter,
+        categoryFilter
+      }).length,
+    [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue]
+  );
+  const providerScopeCount = useMemo(
+    () =>
+      filterMarketplaceItems(marketplaceItems, {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter: 'All providers',
+        categoryFilter
+      }).length,
+    [activeCapability, categoryFilter, kindFilter, searchValue, statusFilter]
+  );
+  const categoryScopeCount = useMemo(
+    () =>
+      filterMarketplaceItems(marketplaceItems, {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter,
+        categoryFilter: 'All categories'
+      }).length,
+    [activeCapability, kindFilter, providerFilter, searchValue, statusFilter]
+  );
   const providerFacetCounts = useMemo(
     () =>
       getFacetOptionCounts(
@@ -124,10 +206,52 @@ export function MarketplaceDashboard() {
       ),
     [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
   );
+  const crossKindSurfaceItems = useMemo(
+    () =>
+      filterMarketplaceItems(marketplaceItems, {
+        kindFilter: 'all',
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter,
+        categoryFilter
+      }),
+    [activeCapability, categoryFilter, providerFilter, searchValue, statusFilter]
+  );
+  const surfaceMap = useMemo(
+    () => getMarketplaceSurfaceMap(crossKindSurfaceItems),
+    [crossKindSurfaceItems]
+  );
+  const crossKindSummaries = useMemo(
+    () => getMarketplaceKindSummaries(crossKindSurfaceItems),
+    [crossKindSurfaceItems]
+  );
+  const counterpartPreview = useMemo(
+    () => getMarketplaceCounterpartPreview(crossKindSurfaceItems, kindFilter),
+    [crossKindSurfaceItems, kindFilter]
+  );
+  const relationshipPreviewMap = useMemo(
+    () =>
+      new Map(
+        marketplaceItems.map(
+          (item) =>
+            [
+              item.id,
+              getRelationshipContext(marketplaceItems, crossKindSurfaceItems, item)
+            ] as const
+        )
+      ),
+    [crossKindSurfaceItems]
+  );
 
   const selectedItem = resolveSelectedItem(filteredItems, selectedId);
-  const relatedItems = selectedItem ? getRelatedItems(marketplaceItems, selectedItem) : [];
+  const relatedItems = selectedItem ? getRelatedItems(crossKindSurfaceItems, selectedItem) : [];
+  const relatedContext = selectedItem ? relationshipPreviewMap.get(selectedItem.id) ?? null : null;
   const comparedItems = getComparedItems(marketplaceItems, comparedIds);
+  const compareWorkspace = useMemo(
+    () => getCompareWorkspaceSummary(filteredItems, comparedItems),
+    [comparedItems, filteredItems]
+  );
   const compareInsights = getCompareInsights(comparedItems);
   const compareInsightMap = new Map(
     compareInsights.itemInsights.map((insight) => [insight.itemId, insight])
@@ -140,7 +264,29 @@ export function MarketplaceDashboard() {
     (stack) =>
       stack.agent.id === selectedItem?.id || stack.mcps.some((item) => item.id === selectedItem?.id)
   );
-  const activePreset = marketplaceViewPresets.find((preset) => preset.id === activePresetId) ?? null;
+  const activePreset = useMemo(
+    () =>
+      getMatchingMarketplacePreset(
+        {
+          kindFilter,
+          searchValue,
+          activeCapability,
+          statusFilter,
+          providerFilter,
+          categoryFilter
+        },
+        sortBy
+      ),
+    [
+      activeCapability,
+      categoryFilter,
+      kindFilter,
+      providerFilter,
+      searchValue,
+      sortBy,
+      statusFilter
+    ]
+  );
   const stackCompanions = activeStack
     ? [activeStack.agent, ...activeStack.mcps].filter((item) => item.id !== selectedItem?.id)
     : [];
@@ -196,6 +342,10 @@ export function MarketplaceDashboard() {
         }
       : null
   ].filter((chip): chip is { key: string; label: string; clear: () => void } => Boolean(chip));
+  const kindCountMap = new Map(kindFacetCounts.map((entry) => [entry.value, entry.count] as const));
+  const statusCountMap = new Map(
+    statusFacetCounts.map((entry) => [entry.value, entry.count] as const)
+  );
 
   const getComparedNames = (itemIds: string[]) =>
     comparedItems
@@ -211,19 +361,34 @@ export function MarketplaceDashboard() {
     return `${gap}${suffix} behind leader`;
   };
 
-  const clearPresetSelection = () => {
-    setActivePresetId(null);
-  };
-
   const focusItem = (itemId: string) => {
     if (!isMarketplaceItemVisible(filteredItems, itemId)) {
-      setKindFilter(defaultFilters.kindFilter);
-      setSearchValue(defaultFilters.searchValue);
-      setActiveCapability(defaultFilters.activeCapability);
-      setStatusFilter(defaultFilters.statusFilter);
-      setProviderFilter(defaultFilters.providerFilter);
-      setCategoryFilter(defaultFilters.categoryFilter);
-      setActivePresetId(null);
+      const targetItem = marketplaceItems.find((item) => item.id === itemId);
+
+      if (targetItem) {
+        const nextFilters = getFocusFiltersForItem(targetItem, {
+          kindFilter,
+          searchValue,
+          activeCapability,
+          statusFilter,
+          providerFilter,
+          categoryFilter
+        });
+
+        setKindFilter(nextFilters.kindFilter);
+        setSearchValue(nextFilters.searchValue);
+        setActiveCapability(nextFilters.activeCapability);
+        setStatusFilter(nextFilters.statusFilter);
+        setProviderFilter(nextFilters.providerFilter);
+        setCategoryFilter(nextFilters.categoryFilter);
+      } else {
+        setKindFilter(defaultFilters.kindFilter);
+        setSearchValue(defaultFilters.searchValue);
+        setActiveCapability(defaultFilters.activeCapability);
+        setStatusFilter(defaultFilters.statusFilter);
+        setProviderFilter(defaultFilters.providerFilter);
+        setCategoryFilter(defaultFilters.categoryFilter);
+      }
     }
 
     setSelectedId(itemId);
@@ -241,34 +406,87 @@ export function MarketplaceDashboard() {
     setProviderFilter(defaultFilters.providerFilter);
     setCategoryFilter(defaultFilters.categoryFilter);
     setSortBy('trust');
-    setActivePresetId(null);
+  };
+
+  const revealRelatedItems = () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    const relatedCluster = [selectedItem, ...getRelatedItems(marketplaceItems, selectedItem)];
+    const resolvedFilters = getContextFiltersForItems(
+      selectedItem,
+      relatedCluster,
+      {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter,
+        categoryFilter
+      }
+    );
+
+    setKindFilter(resolvedFilters.kindFilter);
+    setSearchValue(resolvedFilters.searchValue);
+    setActiveCapability(resolvedFilters.activeCapability);
+    setStatusFilter(resolvedFilters.statusFilter);
+    setProviderFilter(resolvedFilters.providerFilter);
+    setCategoryFilter(resolvedFilters.categoryFilter);
   };
 
   const applyContextFilter = (
     nextFilters: Partial<{
       kindFilter: MarketplaceKind | 'all';
       activeCapability: string;
+      statusFilter: MarketplaceStatus | 'all';
       providerFilter: string;
       categoryFilter: string;
     }>
   ) => {
-    clearPresetSelection();
+    if (!selectedItem) {
+      if (nextFilters.kindFilter) {
+        setKindFilter(nextFilters.kindFilter);
+      }
 
-    if (nextFilters.kindFilter) {
-      setKindFilter(nextFilters.kindFilter);
+      if (nextFilters.activeCapability) {
+        setActiveCapability(nextFilters.activeCapability);
+      }
+
+      if (nextFilters.statusFilter) {
+        setStatusFilter(nextFilters.statusFilter);
+      }
+
+      if (nextFilters.providerFilter) {
+        setProviderFilter(nextFilters.providerFilter);
+      }
+
+      if (nextFilters.categoryFilter) {
+        setCategoryFilter(nextFilters.categoryFilter);
+      }
+
+      return;
     }
 
-    if (nextFilters.activeCapability) {
-      setActiveCapability(nextFilters.activeCapability);
-    }
+    const resolvedFilters = getContextFiltersForItem(
+      selectedItem,
+      {
+        kindFilter,
+        searchValue,
+        activeCapability,
+        statusFilter,
+        providerFilter,
+        categoryFilter
+      },
+      nextFilters
+    );
 
-    if (nextFilters.providerFilter) {
-      setProviderFilter(nextFilters.providerFilter);
-    }
-
-    if (nextFilters.categoryFilter) {
-      setCategoryFilter(nextFilters.categoryFilter);
-    }
+    setKindFilter(resolvedFilters.kindFilter);
+    setSearchValue(resolvedFilters.searchValue);
+    setActiveCapability(resolvedFilters.activeCapability);
+    setStatusFilter(resolvedFilters.statusFilter);
+    setProviderFilter(resolvedFilters.providerFilter);
+    setCategoryFilter(resolvedFilters.categoryFilter);
   };
 
   const applyPreset = (presetId: string) => {
@@ -285,7 +503,6 @@ export function MarketplaceDashboard() {
     setCategoryFilter(preset.filters.categoryFilter);
     setSortBy(preset.sortBy);
     setSelectedId(preset.selectedId);
-    setActivePresetId(preset.id);
   };
 
   return (
@@ -456,7 +673,7 @@ export function MarketplaceDashboard() {
             <button
               key={preset.id}
               type="button"
-              className={`preset-card ${activePresetId === preset.id ? 'active' : ''}`}
+              className={`preset-card ${activePreset?.id === preset.id ? 'active' : ''}`}
               onClick={() => applyPreset(preset.id)}
             >
               <strong>{preset.label}</strong>
@@ -486,12 +703,17 @@ export function MarketplaceDashboard() {
                   role="tab"
                   aria-selected={kindFilter === option.value}
                   className={kindFilter === option.value ? 'active' : ''}
-                  onClick={() => {
-                    clearPresetSelection();
-                    setKindFilter(option.value);
-                  }}
+                  disabled={
+                    option.value !== 'all' &&
+                    (kindCountMap.get(option.value) ?? 0) === 0 &&
+                    kindFilter !== option.value
+                  }
+                  onClick={() => setKindFilter(option.value)}
                 >
                   {option.label}
+                  {option.value === 'all'
+                    ? ` (${crossKindSurfaceItems.length})`
+                    : ` (${kindCountMap.get(option.value) ?? 0})`}
                 </button>
               ))}
             </div>
@@ -502,10 +724,7 @@ export function MarketplaceDashboard() {
                 type="search"
                 placeholder="Search by name, provider, category, or tag"
                 value={searchValue}
-                onChange={(event) => {
-                  clearPresetSelection();
-                  setSearchValue(event.target.value);
-                }}
+                onChange={(event) => setSearchValue(event.target.value)}
               />
             </label>
           </div>
@@ -514,12 +733,9 @@ export function MarketplaceDashboard() {
             <button
               type="button"
               className={activeCapability === 'All' ? 'active' : ''}
-              onClick={() => {
-                clearPresetSelection();
-                setActiveCapability('All');
-              }}
+              onClick={() => setActiveCapability('All')}
             >
-              All
+              All ({capabilityScopeCount})
             </button>
             {capabilityFacetCounts.map(({ value, count }) => (
               <button
@@ -527,10 +743,7 @@ export function MarketplaceDashboard() {
                 type="button"
                 className={activeCapability === value ? 'active' : ''}
                 disabled={count === 0 && activeCapability !== value}
-                onClick={() => {
-                  clearPresetSelection();
-                  setActiveCapability(value);
-                }}
+                onClick={() => setActiveCapability(value)}
               >
                 {value} ({count})
               </button>
@@ -544,12 +757,17 @@ export function MarketplaceDashboard() {
                   key={option.value}
                   type="button"
                   className={statusFilter === option.value ? 'active' : ''}
-                  onClick={() => {
-                    clearPresetSelection();
-                    setStatusFilter(option.value);
-                  }}
+                  disabled={
+                    option.value !== 'all' &&
+                    (statusCountMap.get(option.value) ?? 0) === 0 &&
+                    statusFilter !== option.value
+                  }
+                  onClick={() => setStatusFilter(option.value)}
                 >
                   {option.label}
+                  {option.value === 'all'
+                    ? ` (${statusScopeCount})`
+                    : ` (${statusCountMap.get(option.value) ?? 0})`}
                 </button>
               ))}
             </div>
@@ -558,10 +776,7 @@ export function MarketplaceDashboard() {
               <span>Sort by</span>
               <select
                 value={sortBy}
-                onChange={(event) => {
-                  clearPresetSelection();
-                  setSortBy(event.target.value as typeof sortBy);
-                }}
+                onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -577,12 +792,9 @@ export function MarketplaceDashboard() {
               <span>Provider</span>
               <select
                 value={providerFilter}
-                onChange={(event) => {
-                  clearPresetSelection();
-                  setProviderFilter(event.target.value);
-                }}
+                onChange={(event) => setProviderFilter(event.target.value)}
               >
-                <option value="All providers">All providers</option>
+                <option value="All providers">All providers ({providerScopeCount})</option>
                 {providerFacetCounts.map(({ value, count }) => (
                   <option
                     key={value}
@@ -599,12 +811,9 @@ export function MarketplaceDashboard() {
               <span>Category</span>
               <select
                 value={categoryFilter}
-                onChange={(event) => {
-                  clearPresetSelection();
-                  setCategoryFilter(event.target.value);
-                }}
+                onChange={(event) => setCategoryFilter(event.target.value)}
               >
-                <option value="All categories">All categories</option>
+                <option value="All categories">All categories ({categoryScopeCount})</option>
                 {categoryFacetCounts.map(({ value, count }) => (
                   <option
                     key={value}
@@ -650,10 +859,7 @@ export function MarketplaceDashboard() {
                     key={chip.key}
                     type="button"
                     className="active-filter-chip"
-                    onClick={() => {
-                      clearPresetSelection();
-                      chip.clear();
-                    }}
+                    onClick={chip.clear}
                   >
                     {chip.label}
                     <span aria-hidden="true">×</span>
@@ -718,6 +924,281 @@ export function MarketplaceDashboard() {
             </div>
           ) : null}
 
+          <section className="kind-summary-panel" aria-label="Marketplace kind summary">
+            <div className="kind-summary-header">
+              <div>
+                <h3>Marketplace lanes</h3>
+                <p>
+                  Keep both listing types in view under the current search, status, provider, and
+                  category filters.
+                </p>
+              </div>
+            </div>
+            <div className="kind-summary-grid">
+              {crossKindSummaries.map((summary) => {
+                const isActiveKind =
+                  kindFilter === 'all' ? false : kindFilter === summary.kind;
+                const topListing = summary.topListing;
+
+                return (
+                  <article
+                    key={summary.kind}
+                    className={`kind-summary-card ${isActiveKind ? 'active' : ''}`}
+                  >
+                    <div className="kind-summary-card-header">
+                      <div>
+                        <span className={`kind-pill ${summary.kind}`}>
+                          {summary.kind === 'agent' ? 'Agents' : 'MCP servers'}
+                        </span>
+                        <h4>{summary.count} visible</h4>
+                      </div>
+                      <span className="score-pill">
+                        {summary.averageTrust > 0 ? `${summary.averageTrust} trust` : 'No listings'}
+                      </span>
+                    </div>
+                    <div className="kind-summary-stats">
+                      <span>{summary.readyCount} ready</span>
+                      <span>{summary.scalingCount} scaling</span>
+                      <span>{summary.pilotCount} pilot</span>
+                      <span>{summary.liveConnections} links</span>
+                    </div>
+                    <p className="kind-summary-copy">
+                      {summary.topListing
+                        ? `Top listing: ${summary.topListing.name} from ${summary.topListing.provider}.`
+                        : `No ${summary.kind === 'agent' ? 'agents' : 'MCP servers'} match the current filters.`}
+                    </p>
+                    <div className="kind-summary-actions">
+                      <button
+                        type="button"
+                        className={isActiveKind ? 'stack-link-primary' : 'stack-link'}
+                        onClick={() => {
+                          setKindFilter(summary.kind);
+                          if (summary.topListing) {
+                            setSelectedId(summary.topListing.id);
+                          }
+                        }}
+                      >
+                        {isActiveKind
+                          ? `Focused on ${summary.kind === 'agent' ? 'agents' : 'MCPs'}`
+                          : `Focus ${summary.kind === 'agent' ? 'agents' : 'MCPs'}`}
+                      </button>
+                      {topListing ? (
+                        <button
+                          type="button"
+                          className="stack-link"
+                          onClick={() => focusItem(topListing.id)}
+                        >
+                          Open top listing
+                        </button>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {counterpartPreview ? (
+            <section className="counterpart-panel" aria-label="Hidden counterpart listings">
+              <div className="counterpart-header">
+                <div>
+                  <h3>
+                    Also matching {counterpartPreview.counterpartKind === 'agent' ? 'agents' : 'MCP servers'}
+                  </h3>
+                  <p>
+                    These listings still match the current workspace filters, but the active kind
+                    view is hiding them.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="stack-link-primary"
+                  onClick={() => {
+                    setKindFilter(counterpartPreview.counterpartKind);
+                    if (counterpartPreview.visibleItems[0]) {
+                      setSelectedId(counterpartPreview.visibleItems[0].id);
+                    }
+                  }}
+                >
+                  Switch to {counterpartPreview.counterpartKind === 'agent' ? 'agents' : 'MCPs'}
+                </button>
+              </div>
+
+              {counterpartPreview.visibleItems.length > 0 ? (
+                <div className="counterpart-list">
+                  {counterpartPreview.visibleItems.map((item) => (
+                    <article key={item.id} className="counterpart-card">
+                      <div className="counterpart-card-header">
+                        <div>
+                          <span className={`kind-pill ${item.kind}`}>
+                            {item.kind === 'agent' ? 'Agent' : 'MCP'}
+                          </span>
+                          <h4>{item.name}</h4>
+                        </div>
+                        <span className="score-pill">{item.trustScore} trust</span>
+                      </div>
+                      <p>{item.description}</p>
+                      <div className="counterpart-actions">
+                        <button
+                          type="button"
+                          className="stack-link"
+                          onClick={() => focusItem(item.id)}
+                        >
+                          Open details
+                        </button>
+                        <button
+                          type="button"
+                          className="stack-link"
+                          onClick={() => {
+                            setKindFilter(counterpartPreview.counterpartKind);
+                            setSelectedId(item.id);
+                          }}
+                        >
+                          Reveal in catalog
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {counterpartPreview.remainingCount > 0 ? (
+                    <div className="counterpart-more">
+                      +{counterpartPreview.remainingCount} more matching{' '}
+                      {counterpartPreview.counterpartKind === 'agent' ? 'agents' : 'MCP servers'}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="empty-state compact">
+                  <h3>No hidden counterpart listings</h3>
+                  <p>The current non-kind filters do not leave any matching items on the other side.</p>
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          <section className="surface-map-panel" aria-label="Marketplace surface map">
+            <div className="surface-map-header">
+              <div>
+                <h3>Surface map</h3>
+                <p>
+                  Shows how the current workspace connects agents to MCP servers across the active
+                  search and facet filters.
+                </p>
+              </div>
+              <div className="results-summary">
+                <span>
+                  {surfaceMap.agentRows.length} agent{surfaceMap.agentRows.length === 1 ? '' : 's'} /{' '}
+                  {surfaceMap.mcpRows.length} MCP{surfaceMap.mcpRows.length === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+
+            <div className="surface-map-grid">
+              <section className="surface-map-column">
+                <div className="surface-map-column-header">
+                  <h4>Agents and dependencies</h4>
+                  <span>Linked MCP surfaces visible in this workspace</span>
+                </div>
+                {surfaceMap.agentRows.length > 0 ? (
+                  <div className="surface-map-list">
+                    {surfaceMap.agentRows.map((row) => (
+                      <article key={row.item.id} className="surface-map-card">
+                        <div className="surface-map-card-header">
+                          <button
+                            type="button"
+                            className="surface-map-item"
+                            onClick={() => focusItem(row.item.id)}
+                          >
+                            <span className="kind-pill agent">Agent</span>
+                            <strong>{row.item.name}</strong>
+                          </button>
+                          <span className="surface-map-meta">
+                            {row.connectedItems.length} MCP
+                            {row.connectedItems.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        {row.connectedItems.length > 0 ? (
+                          <div className="surface-map-links">
+                            {row.connectedItems.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className="tag-chip surface-map-link"
+                                onClick={() => focusItem(item.id)}
+                              >
+                                {item.name}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="surface-map-empty">
+                            No MCP servers remain visible for this agent under the current filters.
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state compact">
+                    <h3>No agents in view</h3>
+                    <p>Broaden the active filters to bring agent listings back into the map.</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="surface-map-column">
+                <div className="surface-map-column-header">
+                  <h4>MCP servers and consumers</h4>
+                  <span>Agent listings currently linked to each MCP</span>
+                </div>
+                {surfaceMap.mcpRows.length > 0 ? (
+                  <div className="surface-map-list">
+                    {surfaceMap.mcpRows.map((row) => (
+                      <article key={row.item.id} className="surface-map-card">
+                        <div className="surface-map-card-header">
+                          <button
+                            type="button"
+                            className="surface-map-item"
+                            onClick={() => focusItem(row.item.id)}
+                          >
+                            <span className="kind-pill mcp">MCP</span>
+                            <strong>{row.item.name}</strong>
+                          </button>
+                          <span className="surface-map-meta">
+                            {row.connectedItems.length} agent
+                            {row.connectedItems.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        {row.connectedItems.length > 0 ? (
+                          <div className="surface-map-links">
+                            {row.connectedItems.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className="tag-chip surface-map-link"
+                                onClick={() => focusItem(item.id)}
+                              >
+                                {item.name}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="surface-map-empty">
+                            No agent listings remain visible for this MCP under the current filters.
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state compact">
+                    <h3>No MCP servers in view</h3>
+                    <p>Broaden the active filters to bring MCP listings back into the map.</p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </section>
+
           <section className="compare-panel" aria-label="Comparison tray">
             <div className="compare-panel-header">
               <div>
@@ -727,15 +1208,27 @@ export function MarketplaceDashboard() {
                   updates, and linked surfaces.
                 </p>
               </div>
-              {comparedItems.length > 0 ? (
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() => setComparedIds([])}
-                >
-                  Clear compare
-                </button>
-              ) : null}
+              <div className="compare-panel-actions">
+                {comparedItems.length > 0 ? (
+                  <div className="results-summary compare-visibility-summary">
+                    <span>
+                      {compareWorkspace.visibleCount} in workspace
+                      {compareWorkspace.hiddenCount > 0
+                        ? ` / ${compareWorkspace.hiddenCount} hidden`
+                        : ''}
+                    </span>
+                  </div>
+                ) : null}
+                {comparedItems.length > 0 ? (
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => setComparedIds([])}
+                  >
+                    Clear compare
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {comparedItems.length > 0 ? (
@@ -764,17 +1257,25 @@ export function MarketplaceDashboard() {
                 </div>
 
                 <div className="compare-grid">
-                  {comparedItems.map((item) => {
+                  {compareWorkspace.items.map(({ item, isVisible }) => {
                     const insight = compareInsightMap.get(item.id);
 
                     return (
-                      <article key={item.id} className="compare-card">
+                      <article
+                        key={item.id}
+                        className={`compare-card ${isVisible ? '' : 'hidden-state'}`}
+                      >
                         <div className="compare-card-header">
                           <div className="compare-title-group">
                             <span className={`kind-pill ${item.kind}`}>
                               {item.kind === 'agent' ? 'Agent' : 'MCP'}
                             </span>
                             <div className="compare-badge-row">
+                              {!isVisible ? (
+                                <span className="compare-badge compare-visibility-badge">
+                                  Hidden by filters
+                                </span>
+                              ) : null}
                               {insight?.isTrustLeader ? (
                                 <span className="compare-badge">Trust leader</span>
                               ) : null}
@@ -798,6 +1299,12 @@ export function MarketplaceDashboard() {
                           </button>
                         </div>
                         <h4>{item.name}</h4>
+                        {!isVisible ? (
+                          <p className="compare-visibility-note">
+                            This pinned listing is outside the current catalog slice. Reveal it to
+                            bring it back into the workspace.
+                          </p>
+                        ) : null}
                         <dl className="compare-metrics">
                           <div className={insight?.isTrustLeader ? 'leader' : ''}>
                             <dt>Trust</dt>
@@ -857,7 +1364,7 @@ export function MarketplaceDashboard() {
                             className="stack-link-primary"
                             onClick={() => focusItem(item.id)}
                           >
-                            Open details
+                            {isVisible ? 'Open details' : 'Reveal in catalog'}
                           </button>
                         </div>
                       </article>
@@ -876,6 +1383,7 @@ export function MarketplaceDashboard() {
           <div className="card-grid">
             {filteredItems.map((item) => {
               const isCompared = comparedIds.includes(item.id);
+              const relationshipPreview = relationshipPreviewMap.get(item.id);
 
               return (
                 <article
@@ -910,6 +1418,41 @@ export function MarketplaceDashboard() {
                       </div>
                     </dl>
                   </button>
+                  <div className="market-card-preview">
+                    <span className="market-card-preview-label">Connected surfaces in workspace</span>
+                    {relationshipPreview && relationshipPreview.visibleItems.length > 0 ? (
+                      <div className="market-card-preview-links">
+                        {relationshipPreview.visibleItems.map((relatedItem) => (
+                          <button
+                            key={relatedItem.id}
+                            type="button"
+                            className="tag-chip market-card-preview-chip"
+                            onClick={() => focusItem(relatedItem.id)}
+                          >
+                            {relatedItem.name}
+                          </button>
+                        ))}
+                        {relationshipPreview.remainingCount > 0 ? (
+                          <span className="market-card-preview-more">
+                            +{relationshipPreview.remainingCount} more
+                          </span>
+                        ) : null}
+                        {relationshipPreview.hiddenCount > 0 ? (
+                          <span className="market-card-preview-more">
+                            +{relationshipPreview.hiddenCount} hidden
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : relationshipPreview && relationshipPreview.hiddenCount > 0 ? (
+                      <p className="market-card-preview-empty">
+                        Linked surfaces exist, but they are hidden by the current workspace filters.
+                      </p>
+                    ) : (
+                      <p className="market-card-preview-empty">
+                        No linked agent or MCP surfaces available for this listing.
+                      </p>
+                    )}
+                  </div>
                   <div className="market-card-actions">
                     <button type="button" className="stack-link" onClick={() => focusItem(item.id)}>
                       Inspect
@@ -1017,6 +1560,15 @@ export function MarketplaceDashboard() {
                   <button
                     type="button"
                     className={`tag-chip detail-filter-chip ${
+                      statusFilter === selectedItem.status ? 'active' : ''
+                    }`}
+                    onClick={() => applyContextFilter({ statusFilter: selectedItem.status })}
+                  >
+                    Status: {selectedItem.status}
+                  </button>
+                  <button
+                    type="button"
+                    className={`tag-chip detail-filter-chip ${
                       providerFilter === selectedItem.provider ? 'active' : ''
                     }`}
                     onClick={() => applyContextFilter({ providerFilter: selectedItem.provider })}
@@ -1099,8 +1651,15 @@ export function MarketplaceDashboard() {
               <section className="detail-section">
                 <div className="section-header">
                   <h3>Connected listings</h3>
-                  <span>{relatedItems.length} linked</span>
+                  <span>{relatedContext?.totalCount ?? relatedItems.length} linked</span>
                 </div>
+                {relatedContext?.hiddenCount ? (
+                  <p className="detail-section-note">
+                    {relatedContext.hiddenCount} linked listing
+                    {relatedContext.hiddenCount === 1 ? ' is' : 's are'} hidden by the current
+                    workspace filters.
+                  </p>
+                ) : null}
                 {relatedItems.length > 0 ? (
                   <div className="related-list">
                     {relatedItems.map((item) => (
@@ -1117,6 +1676,14 @@ export function MarketplaceDashboard() {
                         <span>{item.trustScore}</span>
                       </button>
                     ))}
+                  </div>
+                ) : relatedContext && relatedContext.totalCount > 0 ? (
+                  <div className="empty-state compact">
+                    <h3>No connected listings in view</h3>
+                    <p>Linked agents or MCP servers exist, but the current workspace is hiding them.</p>
+                    <button type="button" className="secondary-action" onClick={revealRelatedItems}>
+                      Reveal linked listings
+                    </button>
                   </div>
                 ) : (
                   <div className="empty-state compact">
