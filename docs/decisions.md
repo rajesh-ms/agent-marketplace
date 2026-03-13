@@ -79,3 +79,35 @@ Alternatives considered:
 Why those were not chosen:
 - Silent coercion hides client bugs.
 - Loose date parsing is implementation-dependent and makes heartbeat freshness less reliable.
+
+## 6. Document the marketplace application flow with Mermaid rather than image-only diagrams
+
+The repository now includes `docs/data-flow-diagram.md` as the source-controlled data flow artifact for the marketplace UI, MCP integration, and agent registry interactions.
+
+Why:
+- GitHub can render Mermaid directly, so the diagram stays reviewable in pull requests and readable without exporting binaries.
+- Plain-text diagrams are easier to update alongside API or architecture changes.
+
+Alternatives considered:
+- A binary image committed to the repository.
+- Keeping the flow description only in prose inside `docs/architecture.md`.
+
+Why those were not chosen:
+- Binary diagrams are harder to diff and more likely to drift from the code and docs.
+- Prose-only architecture notes were not detailed enough for the issue acceptance criteria around UI, MCP, and registry data flow.
+
+## 7. Treat UI and MCP components as documented integration boundaries for this issue
+
+The new diagram shows the current registry service inside a larger marketplace application that includes a UI and MCP integration layer, even though those components are not fully implemented in `src/` yet.
+
+Why:
+- The issue asks for an application-level data flow diagram, not only a service-internal sequence.
+- Showing the integration boundary clarifies how agent metadata, MCP metadata, and runtime resolution meet at the marketplace UI.
+
+Alternatives considered:
+- Restricting the diagram to the Node.js service already implemented in the repository.
+- Adding speculative code for UI or MCP contracts in this issue.
+
+Why those were not chosen:
+- A registry-only diagram would miss the acceptance requirement to show UI and integrated MCP views.
+- Adding unvalidated implementation code for UI or MCP would expand scope without clear contracts or tests to anchor it.

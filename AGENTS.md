@@ -9,6 +9,7 @@
 - `src/agent-registry.test.ts`: unit tests for registry behavior.
 - `src/server.test.ts`: HTTP integration tests for end-to-end API coverage.
 - `docs/architecture.md`: architecture summary, data flow, invariants, concurrency model.
+- `docs/data-flow-diagram.md`: detailed marketplace-level data flow across UI, MCP integration, registry, and runtime endpoints.
 - `docs/decisions.md`: design tradeoffs and alternatives considered.
 
 ## Key Files
@@ -35,6 +36,7 @@
 - Domain layer owns validation and authorization decisions.
 - HTTP layer stays thin and only translates query params, request bodies, and errors.
 - Marketplace overview is a derived read model built on demand from current in-memory records.
+- `docs/data-flow-diagram.md` documents the broader application context around the implemented service, including marketplace UI and MCP integration boundaries.
 
 ## Agent Constraints
 

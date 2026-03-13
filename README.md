@@ -2,6 +2,8 @@
 
 Lightweight TypeScript/Node.js service for registering AI agents, enforcing marketplace access policies, searching the catalog, recording health heartbeats, and resolving a logical agent name to a callable runtime endpoint.
 
+Issue 5 adds a detailed marketplace data flow diagram that documents how the surrounding UI and MCP integration consume the registry service and present both agents and MCP capabilities in the application.
+
 ## What It Does
 
 - Registers agent cards with endpoint, protocol, IO, capability, ownership, auth, and access metadata.
@@ -20,9 +22,16 @@ src/
   index.ts            Runtime entrypoint
 docs/
   architecture.md     System design and invariants
+  data-flow-diagram.md Detailed marketplace UI, MCP, and registry flow
   decisions.md        Design rationale and alternatives
 AGENTS.md             Repo navigation guide for AI agents
 ```
+
+## Architecture Docs
+
+- `docs/architecture.md`: implemented service layers, invariants, and data flow summary
+- `docs/data-flow-diagram.md`: detailed end-to-end marketplace data flow including UI, MCP integration, registry, and runtime endpoints
+- `docs/decisions.md`: documentation and design tradeoffs
 
 ## Setup
 

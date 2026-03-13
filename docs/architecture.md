@@ -39,6 +39,18 @@ AgentRegistry method
 JSON response
 ```
 
+## Detailed Marketplace Diagram
+
+The implemented code in this repository is the registry service. The broader application requested by Issue 5 also includes a marketplace UI and an MCP integration surface that displays agent and MCP metadata together. The detailed end-to-end diagram lives in `docs/data-flow-diagram.md`.
+
+At a high level:
+
+- The marketplace UI reads `/marketplace/overview`, `/agents`, `/agents/:name`, and `/resolve/:name` to render dashboard and detail views.
+- `src/server.ts` translates HTTP requests into typed registry operations.
+- `src/agent-registry.ts` remains the source of truth for agent registration, access-controlled discovery, heartbeat updates, and runtime resolution.
+- MCP metadata is modeled as an adjacent integration boundary so the UI can display available MCP servers alongside agent cards without moving authorization rules into the client.
+- The catalog read path is synchronous over the in-memory registry state, while MCP metadata is treated as an external feed or adapter-owned read source.
+
 ## Concurrency Model
 
 - Single Node.js process using the event loop.
@@ -81,3 +93,4 @@ JSON response
 - Introduce a repository interface and durable backing store.
 - Add authenticated write APIs and audit logging.
 - Split overview aggregation into a cached read model if catalog size grows materially.
+- Replace the documented MCP integration boundary with a first-class implementation once MCP registry contracts are finalized.
