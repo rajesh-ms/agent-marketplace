@@ -9,6 +9,7 @@ import {
   defaultStatusSummary,
   defaultTopCategories,
   filterMarketplaceItems,
+  getCompareInsights,
   getComparedItems,
   getMarketplaceStats,
   getRelatedItems,
@@ -87,6 +88,10 @@ export function MarketplaceDashboard() {
   const selectedItem = resolveSelectedItem(filteredItems, selectedId);
   const relatedItems = selectedItem ? getRelatedItems(marketplaceItems, selectedItem) : [];
   const comparedItems = getComparedItems(marketplaceItems, comparedIds);
+  const compareInsights = getCompareInsights(comparedItems);
+  const compareInsightMap = new Map(
+    compareInsights.itemInsights.map((insight) => [insight.itemId, insight])
+  );
   const filteredStats = getMarketplaceStats(filteredItems);
   const filteredStatuses = getStatusSummary(filteredItems);
   const filteredTopCategory = getTopCategories(filteredItems)[0];
@@ -99,6 +104,20 @@ export function MarketplaceDashboard() {
   const stackCompanions = activeStack
     ? [activeStack.agent, ...activeStack.mcps].filter((item) => item.id !== selectedItem?.id)
     : [];
+
+  const getComparedNames = (itemIds: string[]) =>
+    comparedItems
+      .filter((item) => itemIds.includes(item.id))
+      .map((item) => item.name)
+      .join(' / ');
+
+  const renderGapLabel = (isLeader: boolean, gap: number, suffix: string) => {
+    if (isLeader) {
+      return 'Best in tray';
+    }
+
+    return `${gap}${suffix} behind leader`;
+  };
 
   const clearPresetSelection = () => {
     setActivePresetId(null);
@@ -556,52 +575,132 @@ export function MarketplaceDashboard() {
             </div>
 
             {comparedItems.length > 0 ? (
-              <div className="compare-grid">
-                {comparedItems.map((item) => (
-                  <article key={item.id} className="compare-card">
-                    <div className="compare-card-header">
-                      <span className={`kind-pill ${item.kind}`}>
-                        {item.kind === 'agent' ? 'Agent' : 'MCP'}
-                      </span>
-                      <button
-                        type="button"
-                        className="compare-remove"
-                        onClick={() => toggleCompare(item.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <h4>{item.name}</h4>
-                    <dl className="compare-metrics">
-                      <div>
-                        <dt>Trust</dt>
-                        <dd>{item.trustScore}</dd>
-                      </div>
-                      <div>
-                        <dt>Status</dt>
-                        <dd>{item.status}</dd>
-                      </div>
-                      <div>
-                        <dt>Updated</dt>
-                        <dd>{item.lastUpdated}</dd>
-                      </div>
-                      <div>
-                        <dt>Links</dt>
-                        <dd>{item.linkedItemIds.length}</dd>
-                      </div>
-                    </dl>
-                    <div className="compare-actions">
-                      <button
-                        type="button"
-                        className="stack-link-primary"
-                        onClick={() => focusItem(item.id)}
-                      >
-                        Open details
-                      </button>
-                    </div>
+              <>
+                <div className="compare-summary-grid">
+                  <article className="compare-summary-card">
+                    <span>Trust leader</span>
+                    <strong>{getComparedNames(compareInsights.trustLeaderIds)}</strong>
+                    <p>Highest trust score across the pinned set.</p>
                   </article>
-                ))}
-              </div>
+                  <article className="compare-summary-card">
+                    <span>Fastest latency</span>
+                    <strong>{getComparedNames(compareInsights.latencyLeaderIds)}</strong>
+                    <p>Lowest median response time in the tray.</p>
+                  </article>
+                  <article className="compare-summary-card">
+                    <span>Freshest update</span>
+                    <strong>{getComparedNames(compareInsights.freshnessLeaderIds)}</strong>
+                    <p>Most recently updated listing among pinned records.</p>
+                  </article>
+                  <article className="compare-summary-card">
+                    <span>Most linked</span>
+                    <strong>{getComparedNames(compareInsights.linkLeaderIds)}</strong>
+                    <p>Greatest number of connected marketplace surfaces.</p>
+                  </article>
+                </div>
+
+                <div className="compare-grid">
+                  {comparedItems.map((item) => {
+                    const insight = compareInsightMap.get(item.id);
+
+                    return (
+                      <article key={item.id} className="compare-card">
+                        <div className="compare-card-header">
+                          <div className="compare-title-group">
+                            <span className={`kind-pill ${item.kind}`}>
+                              {item.kind === 'agent' ? 'Agent' : 'MCP'}
+                            </span>
+                            <div className="compare-badge-row">
+                              {insight?.isTrustLeader ? (
+                                <span className="compare-badge">Trust leader</span>
+                              ) : null}
+                              {insight?.isLatencyLeader ? (
+                                <span className="compare-badge">Fastest</span>
+                              ) : null}
+                              {insight?.isFreshnessLeader ? (
+                                <span className="compare-badge">Freshest</span>
+                              ) : null}
+                              {insight?.isLinkLeader ? (
+                                <span className="compare-badge">Most linked</span>
+                              ) : null}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="compare-remove"
+                            onClick={() => toggleCompare(item.id)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <h4>{item.name}</h4>
+                        <dl className="compare-metrics">
+                          <div className={insight?.isTrustLeader ? 'leader' : ''}>
+                            <dt>Trust</dt>
+                            <dd>{item.trustScore}</dd>
+                            <small>
+                              {renderGapLabel(
+                                Boolean(insight?.isTrustLeader),
+                                insight?.trustGap ?? 0,
+                                ''
+                              )}
+                            </small>
+                          </div>
+                          <div>
+                            <dt>Status</dt>
+                            <dd>{item.status}</dd>
+                            <small>
+                              {item.kind === 'agent' ? 'Agent rollout state' : 'MCP rollout state'}
+                            </small>
+                          </div>
+                          <div className={insight?.isLatencyLeader ? 'leader' : ''}>
+                            <dt>Latency</dt>
+                            <dd>{item.latency}</dd>
+                            <small>
+                              {renderGapLabel(
+                                Boolean(insight?.isLatencyLeader),
+                                Math.round((insight?.latencyGapMs ?? 0) / 10) / 100,
+                                's'
+                              )}
+                            </small>
+                          </div>
+                          <div className={insight?.isFreshnessLeader ? 'leader' : ''}>
+                            <dt>Updated</dt>
+                            <dd>{item.lastUpdated}</dd>
+                            <small>
+                              {renderGapLabel(
+                                Boolean(insight?.isFreshnessLeader),
+                                insight?.freshnessGapDays ?? 0,
+                                'd'
+                              )}
+                            </small>
+                          </div>
+                          <div className={insight?.isLinkLeader ? 'leader' : ''}>
+                            <dt>Links</dt>
+                            <dd>{item.linkedItemIds.length}</dd>
+                            <small>
+                              {renderGapLabel(
+                                Boolean(insight?.isLinkLeader),
+                                insight?.linkGap ?? 0,
+                                ''
+                              )}
+                            </small>
+                          </div>
+                        </dl>
+                        <div className="compare-actions">
+                          <button
+                            type="button"
+                            className="stack-link-primary"
+                            onClick={() => focusItem(item.id)}
+                          >
+                            Open details
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="empty-state compare-empty">
                 <h3>No comparisons yet.</h3>
@@ -742,56 +841,56 @@ export function MarketplaceDashboard() {
                 </div>
               </section>
 
-	              <section className="detail-section">
-	                <div className="section-header">
-	                  <h3>Deployment stack</h3>
-	                  <span>{activeStack ? `${activeStack.mcps.length + 1} services` : 'Standalone listing'}</span>
-	                </div>
-	                {activeStack ? (
-	                  <div className="stack-context">
-	                    <div className="stack-context-summary">
-	                      <span className="kind-pill agent">Primary agent</span>
-	                      <strong>{activeStack.agent.name}</strong>
-	                      <p>
-	                        {activeStack.averageTrust} average trust across the agent and linked MCP
-	                        surfaces.
-	                      </p>
-	                    </div>
-	                    <div className="stack-context-links">
-	                      {selectedItem.id !== activeStack.agent.id ? (
-	                        <button
-	                          type="button"
-	                          className="stack-link-primary"
-	                          onClick={() => focusItem(activeStack.agent.id)}
-	                        >
-	                          Open {activeStack.agent.name}
-	                        </button>
-	                      ) : null}
-	                      {stackCompanions.map((item) => (
-	                        <button
-	                          key={item.id}
-	                          type="button"
-	                          className="stack-link"
-	                          onClick={() => focusItem(item.id)}
-	                        >
-	                          {item.name}
-	                        </button>
-	                      ))}
-	                    </div>
-	                  </div>
-	                ) : (
-	                  <div className="empty-state compact">
-	                    <h3>No linked stack</h3>
-	                    <p>This listing currently stands on its own without linked MCP dependencies.</p>
-	                  </div>
-	                )}
-	              </section>
-	
-	              <section className="detail-section">
-	                <div className="section-header">
-	                  <h3>Connected listings</h3>
-	                  <span>{relatedItems.length} linked</span>
-	                </div>
+              <section className="detail-section">
+                <div className="section-header">
+                  <h3>Deployment stack</h3>
+                  <span>{activeStack ? `${activeStack.mcps.length + 1} services` : 'Standalone listing'}</span>
+                </div>
+                {activeStack ? (
+                  <div className="stack-context">
+                    <div className="stack-context-summary">
+                      <span className="kind-pill agent">Primary agent</span>
+                      <strong>{activeStack.agent.name}</strong>
+                      <p>
+                        {activeStack.averageTrust} average trust across the agent and linked MCP
+                        surfaces.
+                      </p>
+                    </div>
+                    <div className="stack-context-links">
+                      {selectedItem.id !== activeStack.agent.id ? (
+                        <button
+                          type="button"
+                          className="stack-link-primary"
+                          onClick={() => focusItem(activeStack.agent.id)}
+                        >
+                          Open {activeStack.agent.name}
+                        </button>
+                      ) : null}
+                      {stackCompanions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="stack-link"
+                          onClick={() => focusItem(item.id)}
+                        >
+                          {item.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="empty-state compact">
+                    <h3>No linked stack</h3>
+                    <p>This listing currently stands on its own without linked MCP dependencies.</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="detail-section">
+                <div className="section-header">
+                  <h3>Connected listings</h3>
+                  <span>{relatedItems.length} linked</span>
+                </div>
                 <div className="related-list">
                   {relatedItems.map((item) => (
                     <button

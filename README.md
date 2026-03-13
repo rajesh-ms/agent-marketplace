@@ -13,7 +13,7 @@ This project implements Issue 3 for the AI Agent Marketplace. It delivers a resp
 - Provider and category facets for narrowing the catalog without search-only matching
 - Rollout-status filter and catalog sorting by trust, freshness, or name
 - Filter-aware insight cards that summarize trust, rollout mix, top category, and freshest listing for the current slice
-- Comparison tray for pinning up to three agents or MCP servers side by side
+- Comparison tray for pinning up to three agents or MCP servers side by side, with leader badges and metric-gap summaries
 - Master-detail layout with selectable cards and a live detail panel
 - Deployment stack rail that groups each agent with its linked MCP servers
 - Detail-pane stack context for the selected agent or MCP
@@ -57,7 +57,7 @@ This runs TypeScript type-checking for both app and tooling configs, then produc
 npm test
 ```
 
-The test suite uses Node's built-in runner to validate selector behavior in `src/lib/marketplace.ts`, including zero-safe stats, compare-tray behavior, provider/category filtering, reusable presets, status filtering, sort order, related listing resolution, and agent-stack composition across linked agents and MCP servers.
+The test suite uses Node's built-in runner to validate selector behavior in `src/lib/marketplace.ts`, including zero-safe stats, compare-tray behavior, comparison leader/gap derivation, provider/category filtering, reusable presets, status filtering, sort order, related listing resolution, and agent-stack composition across linked agents and MCP servers.
 
 ## Usage
 
@@ -68,6 +68,6 @@ The test suite uses Node's built-in runner to validate selector behavior in `src
 5. Narrow results with capability chips such as `Workflow routing` or `Source citation`, then refine by provider, category, and rollout status.
 6. Reorder the catalog by trust score, recent updates, or alphabetical name.
 7. Review the `Deployment stacks` rail to see which MCP servers ship with each agent, then jump directly into the linked records.
-8. Use `Compare` on listing cards or `Add to compare` in the detail pane to pin up to three records side by side.
+8. Use `Compare` on listing cards or `Add to compare` in the detail pane to pin up to three records side by side, then read the compare summary to see which listing leads on trust, freshness, latency, and linked surfaces.
 9. Select a card to inspect owner, provider, latency, last-updated date, governance checks, tags, and the deployment stack around that listing.
 10. Use `Connected listings` in the detail pane to jump between agents and the MCP servers they integrate with.

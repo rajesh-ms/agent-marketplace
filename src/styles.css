@@ -589,11 +589,72 @@ button {
   margin-top: 16px;
 }
 
+.compare-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.compare-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compare-summary-card span,
+.compare-metrics dt,
+.compare-metrics small {
+  display: block;
+}
+
+.compare-summary-card span,
+.compare-metrics small {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.compare-summary-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.compare-summary-card p {
+  margin: 8px 0 0;
+  color: var(--panel-muted);
+}
+
 .compare-card {
   border-radius: 18px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compare-title-group {
+  display: grid;
+  gap: 10px;
+}
+
+.compare-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compare-badge {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(110, 222, 163, 0.14);
+  color: #d9ffeb;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .compare-remove {
@@ -619,6 +680,17 @@ button {
 
 .compare-metrics dd {
   margin: 4px 0 0;
+}
+
+.compare-metrics small {
+  margin-top: 6px;
+}
+
+.compare-metrics .leader {
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(110, 222, 163, 0.08);
+  border: 1px solid rgba(110, 222, 163, 0.16);
 }
 
 .card-grid {
@@ -916,6 +988,7 @@ button {
   .insight-strip,
   .catalog-insights,
   .compare-grid,
+  .compare-summary-grid,
   .stack-grid,
   .preset-grid,
   .workspace-grid {
