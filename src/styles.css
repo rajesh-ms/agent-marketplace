@@ -436,6 +436,11 @@ button {
   color: var(--panel-muted);
 }
 
+.capability-filter button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .control-row {
   display: flex;
   gap: 16px;
@@ -516,6 +521,64 @@ button {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--panel-muted);
+}
+
+.active-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.active-filter-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.active-filter-copy strong {
+  color: var(--panel-strong);
+}
+
+.active-filter-copy span {
+  color: var(--panel-muted);
+  font-size: 0.92rem;
+}
+
+.active-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.active-filter-chip,
+.active-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: inherit;
+}
+
+.active-filter-chip {
+  border: 1px solid rgba(239, 127, 77, 0.24);
+  background: rgba(239, 127, 77, 0.12);
+}
+
+.active-filter-chip span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.active-filter-clear {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .catalog-insights {
@@ -809,6 +872,7 @@ button {
 }
 
 .trust-ring {
+  --trust-ring-progress: 220deg;
   min-width: 88px;
   min-height: 88px;
   border-radius: 50%;
@@ -816,7 +880,12 @@ button {
   place-items: center;
   background:
     radial-gradient(circle at center, rgba(8, 16, 24, 0.86) 52%, transparent 53%),
-    conic-gradient(from 180deg, #ef7f4d 0deg, #f5a623 220deg, rgba(255, 255, 255, 0.14) 220deg);
+    conic-gradient(
+      from 180deg,
+      #ef7f4d 0deg,
+      #f5a623 var(--trust-ring-progress),
+      rgba(255, 255, 255, 0.14) var(--trust-ring-progress)
+    );
 }
 
 .trust-ring span {
@@ -891,6 +960,23 @@ button {
 .tag-chip.accent {
   background: rgba(239, 127, 77, 0.12);
   color: #ffd9ca;
+}
+
+.detail-filter-chip {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
+}
+
+.detail-filter-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(239, 127, 77, 0.4);
+}
+
+.detail-filter-chip.active {
+  border-color: rgba(239, 127, 77, 0.48);
+  background: rgba(239, 127, 77, 0.18);
+  color: #fff0e7;
 }
 
 .related-list {
@@ -1031,6 +1117,7 @@ button {
   .market-card-actions,
   .compare-actions,
   .detail-actions,
+  .active-filter-bar,
   .stack-panel-header,
   .stack-card-header,
   .stack-meta,
@@ -1055,5 +1142,9 @@ button {
 
   .sort-field {
     justify-content: space-between;
+  }
+
+  .active-filter-list {
+    justify-content: flex-start;
   }
 }

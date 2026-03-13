@@ -11,6 +11,7 @@ export interface MarketplaceFilters {
 }
 
 export type MarketplaceSort = 'trust' | 'updated' | 'name';
+export type MarketplaceFacet = 'provider' | 'category' | 'capability';
 
 const millisecondsInDay = 24 * 60 * 60 * 1000;
 
@@ -47,6 +48,11 @@ export interface CompareInsights {
   freshnessLeaderIds: string[];
   linkLeaderIds: string[];
   itemInsights: CompareItemInsight[];
+}
+
+export interface MarketplaceFacetOptionCount {
+  value: string;
+  count: number;
 }
 
 export const toggleComparedItem = (
@@ -150,6 +156,9 @@ export const resolveSelectedItem = (
   selectedId: string
 ) => items.find((item) => item.id === selectedId) ?? items[0] ?? null;
 
+export const isMarketplaceItemVisible = (items: MarketplaceItem[], itemId: string) =>
+  items.some((item) => item.id === itemId);
+
 export const getMarketplaceStats = (items: MarketplaceItem[]) => {
   const agents = items.filter((item) => item.kind === 'agent').length;
   const mcps = items.filter((item) => item.kind === 'mcp').length;
@@ -179,6 +188,26 @@ export const getTopCategories = (items: MarketplaceItem[]) =>
     .slice(0, 3)
     .map(([category, count]) => ({ category, count }));
 
+export const getFreshestItem = (items: MarketplaceItem[]) =>
+  items.reduce<MarketplaceItem | null>((freshestItem, item) => {
+    if (!freshestItem) {
+      return item;
+    }
+
+    const freshnessDelta =
+      parseMarketplaceDate(item.lastUpdated) - parseMarketplaceDate(freshestItem.lastUpdated);
+
+    if (freshnessDelta > 0) {
+      return item;
+    }
+
+    if (freshnessDelta === 0 && item.trustScore > freshestItem.trustScore) {
+      return item;
+    }
+
+    return freshestItem;
+  }, null);
+
 export const getUniqueProviders = (items: MarketplaceItem[]) =>
   Array.from(new Set(items.map((item) => item.provider))).sort((left, right) =>
     left.localeCompare(right)
@@ -188,6 +217,42 @@ export const getUniqueCategories = (items: MarketplaceItem[]) =>
   Array.from(new Set(items.map((item) => item.category))).sort((left, right) =>
     left.localeCompare(right)
   );
+
+export const getUniqueCapabilities = (items: MarketplaceItem[]) =>
+  Array.from(new Set(items.flatMap((item) => item.capabilities))).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+export const getFacetOptionCounts = (
+  items: MarketplaceItem[],
+  filters: MarketplaceFilters,
+  facet: MarketplaceFacet
+): MarketplaceFacetOptionCount[] => {
+  const itemsMatchingOtherFilters = filterMarketplaceItems(items, {
+    ...filters,
+    activeCapability: facet === 'capability' ? 'All' : filters.activeCapability,
+    providerFilter: facet === 'provider' ? 'All providers' : filters.providerFilter,
+    categoryFilter: facet === 'category' ? 'All categories' : filters.categoryFilter
+  });
+
+  const allValues =
+    facet === 'provider'
+      ? getUniqueProviders(items)
+      : facet === 'category'
+        ? getUniqueCategories(items)
+        : getUniqueCapabilities(items);
+
+  return allValues.map((value) => ({
+    value,
+    count: itemsMatchingOtherFilters.filter((item) =>
+      facet === 'provider'
+        ? item.provider === value
+        : facet === 'category'
+          ? item.category === value
+          : item.capabilities.includes(value)
+    ).length
+  }));
+};
 
 export const getFeaturedItems = (items: MarketplaceItem[]) =>
   (['agent', 'mcp'] as const)
@@ -328,3 +393,4 @@ export const defaultFeaturedItems = getFeaturedItems(marketplaceItems);
 export const defaultAgentStacks = getAgentStacks(marketplaceItems);
 export const defaultProviders = getUniqueProviders(marketplaceItems);
 export const defaultCategories = getUniqueCategories(marketplaceItems);
+export const defaultCapabilities = getUniqueCapabilities(marketplaceItems);

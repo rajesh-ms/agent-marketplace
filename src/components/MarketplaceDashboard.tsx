@@ -1,16 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { marketplaceItems } from '../data/marketplace';
 import {
   defaultAgentStacks,
-  defaultCategories,
   defaultFeaturedItems,
   defaultMarketplaceStats,
-  defaultProviders,
   defaultStatusSummary,
   defaultTopCategories,
   filterMarketplaceItems,
+  getFacetOptionCounts,
   getCompareInsights,
   getComparedItems,
+  getFreshestItem,
+  isMarketplaceItemVisible,
   getMarketplaceStats,
   getRelatedItems,
   getStatusSummary,
@@ -26,15 +27,6 @@ const kindOptions: Array<{ label: string; value: MarketplaceKind | 'all' }> = [
   { label: 'All Listings', value: 'all' },
   { label: 'Agents', value: 'agent' },
   { label: 'MCP Servers', value: 'mcp' }
-];
-
-const capabilityOptions = [
-  'Workflow routing',
-  'Priority prediction',
-  'Drift detection',
-  'Schema discovery',
-  'Source citation',
-  'Alert history'
 ];
 
 const statusOptions: Array<{ label: string; value: MarketplaceStatus | 'all' }> = [
@@ -84,6 +76,54 @@ export function MarketplaceDashboard() {
 
     return sortMarketplaceItems(visibleItems, sortBy);
   }, [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, sortBy, statusFilter]);
+  const providerFacetCounts = useMemo(
+    () =>
+      getFacetOptionCounts(
+        marketplaceItems,
+        {
+          kindFilter,
+          searchValue,
+          activeCapability,
+          statusFilter,
+          providerFilter,
+          categoryFilter
+        },
+        'provider'
+      ),
+    [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
+  );
+  const capabilityFacetCounts = useMemo(
+    () =>
+      getFacetOptionCounts(
+        marketplaceItems,
+        {
+          kindFilter,
+          searchValue,
+          activeCapability,
+          statusFilter,
+          providerFilter,
+          categoryFilter
+        },
+        'capability'
+      ),
+    [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
+  );
+  const categoryFacetCounts = useMemo(
+    () =>
+      getFacetOptionCounts(
+        marketplaceItems,
+        {
+          kindFilter,
+          searchValue,
+          activeCapability,
+          statusFilter,
+          providerFilter,
+          categoryFilter
+        },
+        'category'
+      ),
+    [activeCapability, categoryFilter, kindFilter, providerFilter, searchValue, statusFilter]
+  );
 
   const selectedItem = resolveSelectedItem(filteredItems, selectedId);
   const relatedItems = selectedItem ? getRelatedItems(marketplaceItems, selectedItem) : [];
@@ -95,7 +135,7 @@ export function MarketplaceDashboard() {
   const filteredStats = getMarketplaceStats(filteredItems);
   const filteredStatuses = getStatusSummary(filteredItems);
   const filteredTopCategory = getTopCategories(filteredItems)[0];
-  const freshestListing = filteredItems[0] ?? null;
+  const freshestListing = getFreshestItem(filteredItems);
   const activeStack = defaultAgentStacks.find(
     (stack) =>
       stack.agent.id === selectedItem?.id || stack.mcps.some((item) => item.id === selectedItem?.id)
@@ -104,6 +144,58 @@ export function MarketplaceDashboard() {
   const stackCompanions = activeStack
     ? [activeStack.agent, ...activeStack.mcps].filter((item) => item.id !== selectedItem?.id)
     : [];
+  const trustRingStyle: CSSProperties | undefined = selectedItem
+    ? {
+        '--trust-ring-progress': `${Math.max(
+          0,
+          Math.min(360, Math.round((selectedItem.trustScore / 100) * 360))
+        )}deg`
+      } as CSSProperties
+    : undefined;
+  const activeFilterChips = [
+    kindFilter !== 'all'
+      ? {
+          key: 'kind',
+          label: kindFilter === 'agent' ? 'Kind: Agents' : 'Kind: MCP Servers',
+          clear: () => setKindFilter(defaultFilters.kindFilter)
+        }
+      : null,
+    searchValue.trim().length > 0
+      ? {
+          key: 'search',
+          label: `Search: ${searchValue.trim()}`,
+          clear: () => setSearchValue(defaultFilters.searchValue)
+        }
+      : null,
+    activeCapability !== 'All'
+      ? {
+          key: 'capability',
+          label: `Capability: ${activeCapability}`,
+          clear: () => setActiveCapability(defaultFilters.activeCapability)
+        }
+      : null,
+    statusFilter !== 'all'
+      ? {
+          key: 'status',
+          label: `Status: ${statusFilter}`,
+          clear: () => setStatusFilter(defaultFilters.statusFilter)
+        }
+      : null,
+    providerFilter !== 'All providers'
+      ? {
+          key: 'provider',
+          label: `Provider: ${providerFilter}`,
+          clear: () => setProviderFilter(defaultFilters.providerFilter)
+        }
+      : null,
+    categoryFilter !== 'All categories'
+      ? {
+          key: 'category',
+          label: `Category: ${categoryFilter}`,
+          clear: () => setCategoryFilter(defaultFilters.categoryFilter)
+        }
+      : null
+  ].filter((chip): chip is { key: string; label: string; clear: () => void } => Boolean(chip));
 
   const getComparedNames = (itemIds: string[]) =>
     comparedItems
@@ -124,14 +216,16 @@ export function MarketplaceDashboard() {
   };
 
   const focusItem = (itemId: string) => {
-    setKindFilter(defaultFilters.kindFilter);
-    setSearchValue(defaultFilters.searchValue);
-    setActiveCapability(defaultFilters.activeCapability);
-    setStatusFilter(defaultFilters.statusFilter);
-    setProviderFilter(defaultFilters.providerFilter);
-    setCategoryFilter(defaultFilters.categoryFilter);
-    setSortBy('trust');
-    setActivePresetId(null);
+    if (!isMarketplaceItemVisible(filteredItems, itemId)) {
+      setKindFilter(defaultFilters.kindFilter);
+      setSearchValue(defaultFilters.searchValue);
+      setActiveCapability(defaultFilters.activeCapability);
+      setStatusFilter(defaultFilters.statusFilter);
+      setProviderFilter(defaultFilters.providerFilter);
+      setCategoryFilter(defaultFilters.categoryFilter);
+      setActivePresetId(null);
+    }
+
     setSelectedId(itemId);
   };
 
@@ -148,6 +242,33 @@ export function MarketplaceDashboard() {
     setCategoryFilter(defaultFilters.categoryFilter);
     setSortBy('trust');
     setActivePresetId(null);
+  };
+
+  const applyContextFilter = (
+    nextFilters: Partial<{
+      kindFilter: MarketplaceKind | 'all';
+      activeCapability: string;
+      providerFilter: string;
+      categoryFilter: string;
+    }>
+  ) => {
+    clearPresetSelection();
+
+    if (nextFilters.kindFilter) {
+      setKindFilter(nextFilters.kindFilter);
+    }
+
+    if (nextFilters.activeCapability) {
+      setActiveCapability(nextFilters.activeCapability);
+    }
+
+    if (nextFilters.providerFilter) {
+      setProviderFilter(nextFilters.providerFilter);
+    }
+
+    if (nextFilters.categoryFilter) {
+      setCategoryFilter(nextFilters.categoryFilter);
+    }
   };
 
   const applyPreset = (presetId: string) => {
@@ -400,17 +521,18 @@ export function MarketplaceDashboard() {
             >
               All
             </button>
-            {capabilityOptions.map((capability) => (
+            {capabilityFacetCounts.map(({ value, count }) => (
               <button
-                key={capability}
+                key={value}
                 type="button"
-                className={activeCapability === capability ? 'active' : ''}
+                className={activeCapability === value ? 'active' : ''}
+                disabled={count === 0 && activeCapability !== value}
                 onClick={() => {
                   clearPresetSelection();
-                  setActiveCapability(capability);
+                  setActiveCapability(value);
                 }}
               >
-                {capability}
+                {value} ({count})
               </button>
             ))}
           </div>
@@ -461,9 +583,13 @@ export function MarketplaceDashboard() {
                 }}
               >
                 <option value="All providers">All providers</option>
-                {defaultProviders.map((provider) => (
-                  <option key={provider} value={provider}>
-                    {provider}
+                {providerFacetCounts.map(({ value, count }) => (
+                  <option
+                    key={value}
+                    value={value}
+                    disabled={count === 0 && providerFilter !== value}
+                  >
+                    {value} ({count})
                   </option>
                 ))}
               </select>
@@ -479,9 +605,13 @@ export function MarketplaceDashboard() {
                 }}
               >
                 <option value="All categories">All categories</option>
-                {defaultCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {categoryFacetCounts.map(({ value, count }) => (
+                  <option
+                    key={value}
+                    value={value}
+                    disabled={count === 0 && categoryFilter !== value}
+                  >
+                    {value} ({count})
                   </option>
                 ))}
               </select>
@@ -491,7 +621,9 @@ export function MarketplaceDashboard() {
           <div className="results-header">
             <div>
               <h2>Catalog</h2>
-              <p>{filteredItems.length} listings match the current filters.</p>
+              <p>
+                Showing {filteredItems.length} of {marketplaceItems.length} listings.
+              </p>
             </div>
             <div className="results-summary">
               <span>
@@ -505,6 +637,38 @@ export function MarketplaceDashboard() {
               </span>
             </div>
           </div>
+
+          {activeFilterChips.length > 0 ? (
+            <div className="active-filter-bar" aria-label="Active marketplace filters">
+              <div className="active-filter-copy">
+                <strong>{activeFilterChips.length} filters active</strong>
+                <span>Clear individual constraints or reset the full workspace.</span>
+              </div>
+              <div className="active-filter-list">
+                {activeFilterChips.map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    className="active-filter-chip"
+                    onClick={() => {
+                      clearPresetSelection();
+                      chip.clear();
+                    }}
+                  >
+                    {chip.label}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="active-filter-clear"
+                  onClick={resetFilters}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {filteredItems.length > 0 ? (
             <div className="catalog-insights" aria-label="Filtered catalog insights">
@@ -784,7 +948,10 @@ export function MarketplaceDashboard() {
                   </p>
                   <h2>{selectedItem.name}</h2>
                 </div>
-                <div className="trust-ring">
+                <div
+                  className="trust-ring"
+                  style={trustRingStyle}
+                >
                   <span>{selectedItem.trustScore}</span>
                   <small>Trust</small>
                 </div>
@@ -818,10 +985,53 @@ export function MarketplaceDashboard() {
                 </div>
                 <div className="tag-row">
                   {selectedItem.capabilities.map((capability) => (
-                    <span key={capability} className="tag-chip accent">
+                    <button
+                      key={capability}
+                      type="button"
+                      className={`tag-chip accent detail-filter-chip ${
+                        activeCapability === capability ? 'active' : ''
+                      }`}
+                      onClick={() => applyContextFilter({ activeCapability: capability })}
+                    >
                       {capability}
-                    </span>
+                    </button>
                   ))}
+                </div>
+              </section>
+
+              <section className="detail-section">
+                <div className="section-header">
+                  <h3>Explore similar</h3>
+                  <span>Refine the catalog from this listing</span>
+                </div>
+                <div className="tag-row">
+                  <button
+                    type="button"
+                    className={`tag-chip detail-filter-chip ${
+                      kindFilter === selectedItem.kind ? 'active' : ''
+                    }`}
+                    onClick={() => applyContextFilter({ kindFilter: selectedItem.kind })}
+                  >
+                    {selectedItem.kind === 'agent' ? 'Agents only' : 'MCPs only'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`tag-chip detail-filter-chip ${
+                      providerFilter === selectedItem.provider ? 'active' : ''
+                    }`}
+                    onClick={() => applyContextFilter({ providerFilter: selectedItem.provider })}
+                  >
+                    Provider: {selectedItem.provider}
+                  </button>
+                  <button
+                    type="button"
+                    className={`tag-chip detail-filter-chip ${
+                      categoryFilter === selectedItem.category ? 'active' : ''
+                    }`}
+                    onClick={() => applyContextFilter({ categoryFilter: selectedItem.category })}
+                  >
+                    Category: {selectedItem.category}
+                  </button>
                 </div>
               </section>
 
@@ -891,22 +1101,29 @@ export function MarketplaceDashboard() {
                   <h3>Connected listings</h3>
                   <span>{relatedItems.length} linked</span>
                 </div>
-                <div className="related-list">
-                  {relatedItems.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="related-card"
-                      onClick={() => focusItem(item.id)}
-                    >
-                      <div>
-                        <strong>{item.name}</strong>
-                        <p>{item.kind === 'agent' ? 'Agent' : 'MCP'} • {item.category}</p>
-                      </div>
-                      <span>{item.trustScore}</span>
-                    </button>
-                  ))}
-                </div>
+                {relatedItems.length > 0 ? (
+                  <div className="related-list">
+                    {relatedItems.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="related-card"
+                        onClick={() => focusItem(item.id)}
+                      >
+                        <div>
+                          <strong>{item.name}</strong>
+                          <p>{item.kind === 'agent' ? 'Agent' : 'MCP'} • {item.category}</p>
+                        </div>
+                        <span>{item.trustScore}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state compact">
+                    <h3>No connected listings</h3>
+                    <p>This marketplace record does not currently expose any linked agents or MCP servers.</p>
+                  </div>
+                )}
               </section>
 
               <section className="detail-section">
@@ -932,6 +1149,17 @@ export function MarketplaceDashboard() {
                 </div>
               </section>
             </>
+          ) : filteredItems.length === 0 ? (
+            <div className="empty-state">
+              <h3>No listings match.</h3>
+              <p>
+                Broaden the search, remove an active filter, or reset the workspace to return to
+                the full agent and MCP catalog.
+              </p>
+              <button type="button" className="stack-link-primary" onClick={resetFilters}>
+                Clear all filters
+              </button>
+            </div>
           ) : (
             <div className="empty-state">
               <h3>Nothing selected.</h3>

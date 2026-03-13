@@ -3,15 +3,19 @@ import assert from 'node:assert/strict';
 import { marketplaceItems } from './data/marketplace';
 import {
   defaultAgentStacks,
+  defaultCapabilities,
   defaultCategories,
   defaultMarketplaceStats,
   defaultProviders,
   filterMarketplaceItems,
+  getFacetOptionCounts,
   getAgentStacks,
   getCompareInsights,
   getComparedItems,
+  getFreshestItem,
   getMarketplaceStats,
   getRelatedItems,
+  isMarketplaceItemVisible,
   marketplaceViewPresets,
   parseLatencyMs,
   parseMarketplaceDate,
@@ -67,6 +71,17 @@ test('falls back to the first visible listing when the selected item is not pres
   assert.equal(resolved?.name, 'Support Triage Copilot');
 });
 
+test('detects whether a navigation target is visible in the current filtered slice', () => {
+  const supportItems = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    kindFilter: 'agent',
+    searchValue: 'support'
+  });
+
+  assert.equal(isMarketplaceItemVisible(supportItems, 'agent-support-triage'), true);
+  assert.equal(isMarketplaceItemVisible(supportItems, 'mcp-docs'), false);
+});
+
 test('filters listings by rollout status', () => {
   const readyItems = filterMarketplaceItems(marketplaceItems, {
     ...baseFilters,
@@ -96,6 +111,18 @@ test('sorts listings by most recently updated first', () => {
 
   assert.equal(sorted[0]?.name, 'Salesforce MCP');
   assert.equal(sorted[1]?.name, 'Support Triage Copilot');
+});
+
+test('derives the freshest listing independently of the active catalog sort order', () => {
+  const trustSorted = sortMarketplaceItems(marketplaceItems, 'trust');
+
+  assert.equal(trustSorted[0]?.name, 'Salesforce MCP');
+  assert.equal(getFreshestItem(trustSorted)?.name, 'Salesforce MCP');
+
+  const nameSorted = sortMarketplaceItems(marketplaceItems, 'name');
+
+  assert.equal(nameSorted[0]?.name, 'Confluence MCP');
+  assert.equal(getFreshestItem(nameSorted)?.name, 'Salesforce MCP');
 });
 
 test('builds agent stacks with linked MCP servers', () => {
@@ -135,6 +162,67 @@ test('filters listings by provider and category', () => {
   assert.deepEqual(filtered.map((item) => item.name), ['Confluence MCP']);
 });
 
+test('derives facet counts from the current filtered slice while excluding the active facet itself', () => {
+  const providerCounts = getFacetOptionCounts(
+    marketplaceItems,
+    {
+      ...baseFilters,
+      kindFilter: 'agent',
+      categoryFilter: 'Support'
+    },
+    'provider'
+  );
+  const categoryCounts = getFacetOptionCounts(
+    marketplaceItems,
+    {
+      ...baseFilters,
+      providerFilter: 'Marketplace Verified'
+    },
+    'category'
+  );
+
+  assert.deepEqual(providerCounts, [
+    { value: 'Assist Labs', count: 1 },
+    { value: 'Marketplace Verified', count: 0 },
+    { value: 'Northstar AI', count: 0 },
+    { value: 'Symphony Core', count: 0 },
+    { value: 'Telemetry Works', count: 0 }
+  ]);
+  assert.deepEqual(categoryCounts, [
+    { value: 'Compliance', count: 0 },
+    { value: 'CRM', count: 1 },
+    { value: 'Knowledge', count: 1 },
+    { value: 'Observability', count: 0 },
+    { value: 'Revenue', count: 0 },
+    { value: 'Support', count: 0 }
+  ]);
+});
+
+test('derives capability counts from the current filtered slice while excluding the active capability itself', () => {
+  const capabilityCounts = getFacetOptionCounts(
+    marketplaceItems,
+    {
+      ...baseFilters,
+      kindFilter: 'mcp',
+      providerFilter: 'Marketplace Verified',
+      activeCapability: 'Source citation'
+    },
+    'capability'
+  );
+
+  assert.deepEqual(
+    capabilityCounts.filter(({ count }) => count > 0),
+    [
+      { value: 'Page retrieval', count: 1 },
+      { value: 'Read records', count: 1 },
+      { value: 'Schema discovery', count: 1 },
+      { value: 'Search', count: 1 },
+      { value: 'Source citation', count: 1 },
+      { value: 'Write notes', count: 1 }
+    ]
+  );
+});
+
 test('derives sorted provider and category filter options', () => {
   assert.deepEqual(defaultProviders, [
     'Assist Labs',
@@ -150,6 +238,29 @@ test('derives sorted provider and category filter options', () => {
     'Observability',
     'Revenue',
     'Support'
+  ]);
+});
+
+test('derives sorted capability filter options from the dataset', () => {
+  assert.deepEqual(defaultCapabilities, [
+    'Alert history',
+    'Context summarization',
+    'Drift detection',
+    'Evidence packaging',
+    'Metric queries',
+    'Page retrieval',
+    'Policy checks',
+    'Priority prediction',
+    'Read records',
+    'Schema discovery',
+    'Search',
+    'Source citation',
+    'Suggested response',
+    'Ticket enrichment',
+    'Timeline generation',
+    'Trace lookups',
+    'Workflow routing',
+    'Write notes'
   ]);
 });
 
