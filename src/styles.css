@@ -457,7 +457,7 @@ button {
 
 .facet-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -689,6 +689,450 @@ button {
   margin-top: 16px;
 }
 
+.provider-summary-panel {
+  margin-bottom: 20px;
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(239, 127, 77, 0.08), rgba(79, 131, 219, 0.06)),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.provider-summary-header,
+.provider-summary-card-header,
+.provider-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.provider-summary-header h3,
+.provider-summary-card h4 {
+  margin: 0;
+}
+
+.provider-summary-header p,
+.provider-summary-copy {
+  margin: 6px 0 0;
+  color: var(--panel-muted);
+}
+
+.provider-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.provider-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.provider-summary-card.active {
+  border-color: rgba(239, 127, 77, 0.45);
+  box-shadow: 0 16px 30px rgba(5, 10, 17, 0.28);
+}
+
+.provider-summary-trust {
+  color: var(--panel-strong);
+  font-weight: 700;
+}
+
+.provider-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.provider-summary-stats span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--panel-muted);
+  font-size: 0.8rem;
+}
+
+.provider-summary-actions {
+  margin-top: 16px;
+}
+
+.category-summary-panel {
+  margin-bottom: 20px;
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(110, 222, 163, 0.08), rgba(79, 131, 219, 0.06)),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.category-summary-header,
+.category-summary-card-header,
+.category-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.category-summary-header h3,
+.category-summary-card h4 {
+  margin: 0;
+}
+
+.category-summary-header p,
+.category-summary-copy {
+  margin: 6px 0 0;
+  color: var(--panel-muted);
+}
+
+.category-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.category-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.category-summary-card.active {
+  border-color: rgba(110, 222, 163, 0.38);
+  box-shadow: 0 16px 30px rgba(5, 10, 17, 0.28);
+}
+
+.category-summary-trust {
+  color: var(--panel-strong);
+  font-weight: 700;
+}
+
+.category-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.category-summary-stats span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--panel-muted);
+  font-size: 0.8rem;
+}
+
+.category-summary-actions {
+  margin-top: 16px;
+}
+
+.capability-summary-panel {
+  margin-bottom: 20px;
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(238, 216, 97, 0.08), rgba(97, 181, 255, 0.08)),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.capability-summary-header,
+.capability-summary-card-header,
+.capability-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.capability-summary-header h3,
+.capability-summary-card h4 {
+  margin: 0;
+}
+
+.capability-summary-header p,
+.capability-summary-copy {
+  margin: 6px 0 0;
+  color: var(--panel-muted);
+}
+
+.capability-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.capability-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.capability-summary-card.active {
+  border-color: rgba(238, 216, 97, 0.42);
+  box-shadow: 0 16px 30px rgba(5, 10, 17, 0.28);
+}
+
+.capability-summary-trust {
+  color: var(--panel-strong);
+  font-weight: 700;
+}
+
+.capability-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.capability-summary-stats span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--panel-muted);
+  font-size: 0.8rem;
+}
+
+.capability-summary-actions {
+  margin-top: 16px;
+}
+
+.owner-summary-panel {
+  margin-bottom: 20px;
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(97, 181, 255, 0.08), rgba(110, 222, 163, 0.08)),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.owner-summary-header,
+.owner-summary-card-header,
+.owner-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.owner-summary-header h3,
+.owner-summary-card h4 {
+  margin: 0;
+}
+
+.owner-summary-header p,
+.owner-summary-copy {
+  margin: 6px 0 0;
+  color: var(--panel-muted);
+}
+
+.owner-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.owner-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.owner-summary-card.active {
+  border-color: rgba(97, 181, 255, 0.4);
+  box-shadow: 0 16px 30px rgba(5, 10, 17, 0.28);
+}
+
+.owner-summary-trust {
+  color: var(--panel-strong);
+  font-weight: 700;
+}
+
+.owner-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.owner-summary-stats span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--panel-muted);
+  font-size: 0.8rem;
+}
+
+.owner-summary-actions {
+  margin-top: 16px;
+}
+
+.governance-summary-panel {
+  margin-bottom: 20px;
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(245, 166, 35, 0.08), rgba(97, 181, 255, 0.08)),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.governance-summary-header,
+.governance-summary-card-header,
+.governance-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.governance-summary-header h3,
+.governance-summary-card h4 {
+  margin: 0;
+}
+
+.governance-summary-header p,
+.governance-summary-copy {
+  margin: 6px 0 0;
+  color: var(--panel-muted);
+}
+
+.governance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.governance-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.governance-summary-card.active {
+  border-color: rgba(245, 166, 35, 0.4);
+  box-shadow: 0 16px 30px rgba(5, 10, 17, 0.28);
+}
+
+.governance-summary-trust {
+  color: var(--panel-strong);
+  font-weight: 700;
+}
+
+.governance-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.governance-summary-stats span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--panel-muted);
+  font-size: 0.8rem;
+}
+
+.governance-summary-actions {
+  margin-top: 16px;
+}
+
+.status-summary-panel {
+  margin-bottom: 20px;
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(239, 127, 77, 0.08), rgba(110, 222, 163, 0.08)),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-summary-header,
+.status-summary-card-header,
+.status-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.status-summary-header h3,
+.status-summary-card h4 {
+  margin: 0;
+}
+
+.status-summary-header p,
+.status-summary-copy {
+  margin: 6px 0 0;
+  color: var(--panel-muted);
+}
+
+.status-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.status-summary-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-summary-card.active {
+  border-color: rgba(239, 127, 77, 0.45);
+  box-shadow: 0 16px 30px rgba(5, 10, 17, 0.28);
+}
+
+.status-summary-trust {
+  color: var(--panel-strong);
+  font-weight: 700;
+}
+
+.status-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.status-summary-stats span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--panel-muted);
+  font-size: 0.8rem;
+}
+
+.status-summary-actions {
+  margin-top: 16px;
+}
+
 .counterpart-panel {
   margin-bottom: 20px;
   border-radius: 22px;
@@ -837,6 +1281,10 @@ button {
 
 .surface-map-empty {
   margin: 14px 0 0;
+}
+
+.surface-map-action {
+  margin-top: 10px;
 }
 
 .compare-panel {
@@ -1125,6 +1573,53 @@ button {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.market-card-signal-group + .market-card-signal-group,
+.market-card-signal-group + .market-card-tags,
+.market-card-tags + .market-card-preview-label,
+.market-card-tags + .market-card-preview-empty,
+.market-card-tags + .market-card-preview-links {
+  margin-top: 12px;
+}
+
+.market-card-signal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.market-card-signal-button {
+  max-width: 100%;
+  text-align: left;
+}
+
+.market-card-governance-button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.market-card-tag-button {
+  padding-inline: 9px;
+  font-size: 0.76rem;
+}
+
+.market-card-tag-count {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .market-card-preview-label,
 .market-card-preview-more {
   color: rgba(255, 255, 255, 0.54);
@@ -1149,6 +1644,10 @@ button {
 .market-card-preview-empty {
   margin: 10px 0 0;
   color: var(--panel-muted);
+}
+
+.market-card-preview-action {
+  margin-top: 10px;
 }
 
 .detail-panel {
@@ -1338,6 +1837,37 @@ button {
   margin-top: 10px;
 }
 
+.governance-checklist {
+  list-style: none;
+  padding-left: 0;
+}
+
+.governance-checklist li + li {
+  margin-top: 12px;
+}
+
+.governance-check-button {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px 14px;
+  transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
+}
+
+.governance-check-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(245, 166, 35, 0.36);
+}
+
+.governance-check-button.active {
+  border-color: rgba(245, 166, 35, 0.48);
+  background: rgba(245, 166, 35, 0.12);
+  color: #fff1d9;
+}
+
 .empty-state {
   border-radius: 20px;
   padding: 22px;
@@ -1365,6 +1895,12 @@ button {
   .insight-strip,
   .catalog-insights,
   .kind-summary-grid,
+  .provider-summary-grid,
+  .category-summary-grid,
+  .capability-summary-grid,
+  .owner-summary-grid,
+  .governance-summary-grid,
+  .status-summary-grid,
   .surface-map-grid,
   .compare-grid,
   .compare-summary-grid,
@@ -1406,6 +1942,24 @@ button {
   .toolbar,
   .results-header,
   .control-row,
+  .provider-summary-header,
+  .provider-summary-card-header,
+  .provider-summary-actions,
+  .category-summary-header,
+  .category-summary-card-header,
+  .category-summary-actions,
+  .capability-summary-header,
+  .capability-summary-card-header,
+  .capability-summary-actions,
+  .owner-summary-header,
+  .owner-summary-card-header,
+  .owner-summary-actions,
+  .governance-summary-header,
+  .governance-summary-card-header,
+  .governance-summary-actions,
+  .status-summary-header,
+  .status-summary-card-header,
+  .status-summary-actions,
   .counterpart-header,
   .counterpart-card-header,
   .counterpart-actions,

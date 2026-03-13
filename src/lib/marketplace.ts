@@ -8,10 +8,12 @@ export interface MarketplaceFilters {
   statusFilter: MarketplaceStatus | 'all';
   providerFilter: string;
   categoryFilter: string;
+  ownerFilter: string;
+  governanceFilter: string;
 }
 
 export type MarketplaceSort = 'trust' | 'updated' | 'name';
-export type MarketplaceFacet = 'provider' | 'category' | 'capability';
+export type MarketplaceFacet = 'provider' | 'category' | 'capability' | 'owner' | 'governance';
 
 const millisecondsInDay = 24 * 60 * 60 * 1000;
 
@@ -92,6 +94,60 @@ export interface MarketplaceKindSummary {
   topListing: MarketplaceItem | null;
 }
 
+export interface MarketplaceProviderSummary {
+  provider: string;
+  count: number;
+  agentCount: number;
+  mcpCount: number;
+  averageTrust: number;
+  topListing: MarketplaceItem | null;
+}
+
+export interface MarketplaceCategorySummary {
+  category: string;
+  count: number;
+  agentCount: number;
+  mcpCount: number;
+  averageTrust: number;
+  topListing: MarketplaceItem | null;
+}
+
+export interface MarketplaceStatusSummary {
+  status: MarketplaceStatus;
+  count: number;
+  agentCount: number;
+  mcpCount: number;
+  averageTrust: number;
+  topListing: MarketplaceItem | null;
+}
+
+export interface MarketplaceOwnerSummary {
+  owner: string;
+  count: number;
+  agentCount: number;
+  mcpCount: number;
+  averageTrust: number;
+  topListing: MarketplaceItem | null;
+}
+
+export interface MarketplaceGovernanceSummary {
+  governance: string;
+  count: number;
+  agentCount: number;
+  mcpCount: number;
+  averageTrust: number;
+  topListing: MarketplaceItem | null;
+}
+
+export interface MarketplaceCapabilitySummary {
+  capability: string;
+  count: number;
+  agentCount: number;
+  mcpCount: number;
+  averageTrust: number;
+  topListing: MarketplaceItem | null;
+}
+
 export interface MarketplaceCounterpartPreview {
   counterpartKind: MarketplaceKind;
   visibleItems: MarketplaceItem[];
@@ -129,6 +185,9 @@ const matchesItemSearch = (item: MarketplaceItem, searchValue: string) => {
 const matchesItemCapability = (item: MarketplaceItem, capability: string) =>
   capability === 'All' ||
   item.capabilities.some((entry) => entry.toLowerCase() === capability.toLowerCase());
+
+const matchesItemGovernance = (item: MarketplaceItem, governance: string) =>
+  governance === 'All controls' || item.governance.includes(governance);
 
 export const toggleComparedItem = (
   comparedIds: string[],
@@ -174,7 +233,9 @@ export const filterMarketplaceItems = (
     activeCapability,
     statusFilter,
     providerFilter,
-    categoryFilter
+    categoryFilter,
+    ownerFilter,
+    governanceFilter
   }: MarketplaceFilters
 ) => {
   return items.filter((item) => {
@@ -182,16 +243,20 @@ export const filterMarketplaceItems = (
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     const matchesProvider = providerFilter === 'All providers' || item.provider === providerFilter;
     const matchesCategory = categoryFilter === 'All categories' || item.category === categoryFilter;
+    const matchesOwner = ownerFilter === 'All owners' || item.owner === ownerFilter;
     const matchesSearch = matchesItemSearch(item, searchValue);
     const matchesCapability = matchesItemCapability(item, activeCapability);
+    const matchesGovernance = matchesItemGovernance(item, governanceFilter);
 
     return (
       matchesKind &&
       matchesStatus &&
       matchesProvider &&
       matchesCategory &&
+      matchesOwner &&
       matchesSearch &&
-      matchesCapability
+      matchesCapability &&
+      matchesGovernance
     );
   });
 };
@@ -202,6 +267,7 @@ export const getFocusFiltersForItem = (
 ): MarketplaceFilters => {
   const matchesSearch = matchesItemSearch(item, filters.searchValue);
   const matchesCapability = matchesItemCapability(item, filters.activeCapability);
+  const matchesGovernance = matchesItemGovernance(item, filters.governanceFilter);
 
   return {
     kindFilter: filters.kindFilter === 'all' || item.kind === filters.kindFilter ? filters.kindFilter : 'all',
@@ -215,7 +281,12 @@ export const getFocusFiltersForItem = (
     categoryFilter:
       filters.categoryFilter === 'All categories' || item.category === filters.categoryFilter
         ? filters.categoryFilter
-        : 'All categories'
+        : 'All categories',
+    ownerFilter:
+      filters.ownerFilter === 'All owners' || item.owner === filters.ownerFilter
+        ? filters.ownerFilter
+        : 'All owners',
+    governanceFilter: matchesGovernance ? filters.governanceFilter : 'All controls'
   };
 };
 
@@ -251,7 +322,17 @@ export const getFocusFiltersForItems = (
       filters.categoryFilter === 'All categories' ||
       items.every((item) => item.category === filters.categoryFilter)
         ? filters.categoryFilter
-        : 'All categories'
+        : 'All categories',
+    ownerFilter:
+      filters.ownerFilter === 'All owners' ||
+      items.every((item) => item.owner === filters.ownerFilter)
+        ? filters.ownerFilter
+        : 'All owners',
+    governanceFilter:
+      filters.governanceFilter === 'All controls' ||
+      items.every((item) => item.governance.includes(filters.governanceFilter))
+        ? filters.governanceFilter
+        : 'All controls'
   };
 };
 
@@ -283,6 +364,8 @@ export const matchesMarketplacePreset = (
   filters.statusFilter === preset.filters.statusFilter &&
   filters.providerFilter === preset.filters.providerFilter &&
   filters.categoryFilter === preset.filters.categoryFilter &&
+  filters.ownerFilter === preset.filters.ownerFilter &&
+  filters.governanceFilter === preset.filters.governanceFilter &&
   sortBy === preset.sortBy;
 
 export const getMatchingMarketplacePreset = (
@@ -353,6 +436,149 @@ export const getMarketplaceKindSummaries = (
     };
   });
 
+export const getMarketplaceProviderSummaries = (
+  items: MarketplaceItem[]
+): MarketplaceProviderSummary[] =>
+  getUniqueProviders(items)
+    .map((provider) => {
+      const providerItems = items.filter((item) => item.provider === provider);
+      const stats = getMarketplaceStats(providerItems);
+      const topListing = sortMarketplaceItems(providerItems, 'trust')[0] ?? null;
+
+      return {
+        provider,
+        count: providerItems.length,
+        agentCount: providerItems.filter((item) => item.kind === 'agent').length,
+        mcpCount: providerItems.filter((item) => item.kind === 'mcp').length,
+        averageTrust: stats.averageTrust,
+        topListing
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        right.averageTrust - left.averageTrust ||
+        left.provider.localeCompare(right.provider)
+    );
+
+export const getMarketplaceCategorySummaries = (
+  items: MarketplaceItem[]
+): MarketplaceCategorySummary[] =>
+  getUniqueCategories(items)
+    .map((category) => {
+      const categoryItems = items.filter((item) => item.category === category);
+      const stats = getMarketplaceStats(categoryItems);
+      const topListing = sortMarketplaceItems(categoryItems, 'trust')[0] ?? null;
+
+      return {
+        category,
+        count: categoryItems.length,
+        agentCount: categoryItems.filter((item) => item.kind === 'agent').length,
+        mcpCount: categoryItems.filter((item) => item.kind === 'mcp').length,
+        averageTrust: stats.averageTrust,
+        topListing
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        right.averageTrust - left.averageTrust ||
+        left.category.localeCompare(right.category)
+    );
+
+export const getMarketplaceStatusSummaries = (
+  items: MarketplaceItem[]
+): MarketplaceStatusSummary[] =>
+  (['Ready', 'Scaling', 'Pilot'] as const).map((status) => {
+    const statusItems = items.filter((item) => item.status === status);
+    const stats = getMarketplaceStats(statusItems);
+    const topListing = sortMarketplaceItems(statusItems, 'trust')[0] ?? null;
+
+    return {
+      status,
+      count: statusItems.length,
+      agentCount: statusItems.filter((item) => item.kind === 'agent').length,
+      mcpCount: statusItems.filter((item) => item.kind === 'mcp').length,
+      averageTrust: stats.averageTrust,
+      topListing
+    };
+  });
+
+export const getMarketplaceOwnerSummaries = (
+  items: MarketplaceItem[]
+): MarketplaceOwnerSummary[] =>
+  getUniqueOwners(items)
+    .map((owner) => {
+      const ownerItems = items.filter((item) => item.owner === owner);
+      const stats = getMarketplaceStats(ownerItems);
+      const topListing = sortMarketplaceItems(ownerItems, 'trust')[0] ?? null;
+
+      return {
+        owner,
+        count: ownerItems.length,
+        agentCount: ownerItems.filter((item) => item.kind === 'agent').length,
+        mcpCount: ownerItems.filter((item) => item.kind === 'mcp').length,
+        averageTrust: stats.averageTrust,
+        topListing
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        right.averageTrust - left.averageTrust ||
+        left.owner.localeCompare(right.owner)
+    );
+
+export const getMarketplaceGovernanceSummaries = (
+  items: MarketplaceItem[]
+): MarketplaceGovernanceSummary[] =>
+  getUniqueGovernance(items)
+    .map((governance) => {
+      const governanceItems = items.filter((item) => item.governance.includes(governance));
+      const stats = getMarketplaceStats(governanceItems);
+      const topListing = sortMarketplaceItems(governanceItems, 'trust')[0] ?? null;
+
+      return {
+        governance,
+        count: governanceItems.length,
+        agentCount: governanceItems.filter((item) => item.kind === 'agent').length,
+        mcpCount: governanceItems.filter((item) => item.kind === 'mcp').length,
+        averageTrust: stats.averageTrust,
+        topListing
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        right.averageTrust - left.averageTrust ||
+        left.governance.localeCompare(right.governance)
+    );
+
+export const getMarketplaceCapabilitySummaries = (
+  items: MarketplaceItem[]
+): MarketplaceCapabilitySummary[] =>
+  getUniqueCapabilities(items)
+    .map((capability) => {
+      const capabilityItems = items.filter((item) => item.capabilities.includes(capability));
+      const stats = getMarketplaceStats(capabilityItems);
+      const topListing = sortMarketplaceItems(capabilityItems, 'trust')[0] ?? null;
+
+      return {
+        capability,
+        count: capabilityItems.length,
+        agentCount: capabilityItems.filter((item) => item.kind === 'agent').length,
+        mcpCount: capabilityItems.filter((item) => item.kind === 'mcp').length,
+        averageTrust: stats.averageTrust,
+        topListing
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        right.averageTrust - left.averageTrust ||
+        left.capability.localeCompare(right.capability)
+    );
+
 export const getStatusSummary = (items: MarketplaceItem[]) => ({
   ready: items.filter((item) => item.status === 'Ready').length,
   pilot: items.filter((item) => item.status === 'Pilot').length,
@@ -390,6 +616,9 @@ export const getFreshestItem = (items: MarketplaceItem[]) =>
     return freshestItem;
   }, null);
 
+export const getRecentlyUpdatedItems = (items: MarketplaceItem[], limit = 4) =>
+  sortMarketplaceItems(items, 'updated').slice(0, Math.max(limit, 0));
+
 export const getUniqueProviders = (items: MarketplaceItem[]) =>
   Array.from(new Set(items.map((item) => item.provider))).sort((left, right) =>
     left.localeCompare(right)
@@ -397,6 +626,16 @@ export const getUniqueProviders = (items: MarketplaceItem[]) =>
 
 export const getUniqueCategories = (items: MarketplaceItem[]) =>
   Array.from(new Set(items.map((item) => item.category))).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+export const getUniqueOwners = (items: MarketplaceItem[]) =>
+  Array.from(new Set(items.map((item) => item.owner))).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+export const getUniqueGovernance = (items: MarketplaceItem[]) =>
+  Array.from(new Set(items.flatMap((item) => item.governance))).sort((left, right) =>
     left.localeCompare(right)
   );
 
@@ -414,7 +653,9 @@ export const getFacetOptionCounts = (
     ...filters,
     activeCapability: facet === 'capability' ? 'All' : filters.activeCapability,
     providerFilter: facet === 'provider' ? 'All providers' : filters.providerFilter,
-    categoryFilter: facet === 'category' ? 'All categories' : filters.categoryFilter
+    categoryFilter: facet === 'category' ? 'All categories' : filters.categoryFilter,
+    ownerFilter: facet === 'owner' ? 'All owners' : filters.ownerFilter,
+    governanceFilter: facet === 'governance' ? 'All controls' : filters.governanceFilter
   });
 
   const allValues =
@@ -422,7 +663,11 @@ export const getFacetOptionCounts = (
       ? getUniqueProviders(items)
       : facet === 'category'
         ? getUniqueCategories(items)
-        : getUniqueCapabilities(items);
+        : facet === 'owner'
+          ? getUniqueOwners(items)
+          : facet === 'governance'
+            ? getUniqueGovernance(items)
+            : getUniqueCapabilities(items);
 
   return allValues.map((value) => ({
     value,
@@ -431,7 +676,11 @@ export const getFacetOptionCounts = (
         ? item.provider === value
         : facet === 'category'
           ? item.category === value
-          : item.capabilities.includes(value)
+          : facet === 'owner'
+            ? item.owner === value
+            : facet === 'governance'
+              ? item.governance.includes(value)
+              : item.capabilities.includes(value)
     ).length
   }));
 };
@@ -673,7 +922,9 @@ export const marketplaceViewPresets: MarketplaceViewPreset[] = [
       activeCapability: 'All',
       statusFilter: 'Ready',
       providerFilter: 'All providers',
-      categoryFilter: 'All categories'
+      categoryFilter: 'All categories',
+      ownerFilter: 'All owners',
+      governanceFilter: 'All controls'
     },
     sortBy: 'trust',
     selectedId: 'mcp-crm'
@@ -688,7 +939,9 @@ export const marketplaceViewPresets: MarketplaceViewPreset[] = [
       activeCapability: 'Source citation',
       statusFilter: 'all',
       providerFilter: 'All providers',
-      categoryFilter: 'Knowledge'
+      categoryFilter: 'Knowledge',
+      ownerFilter: 'All owners',
+      governanceFilter: 'All controls'
     },
     sortBy: 'updated',
     selectedId: 'mcp-docs'
@@ -703,7 +956,9 @@ export const marketplaceViewPresets: MarketplaceViewPreset[] = [
       activeCapability: 'Alert history',
       statusFilter: 'all',
       providerFilter: 'All providers',
-      categoryFilter: 'Observability'
+      categoryFilter: 'Observability',
+      ownerFilter: 'All owners',
+      governanceFilter: 'All controls'
     },
     sortBy: 'updated',
     selectedId: 'mcp-observability'
@@ -717,4 +972,6 @@ export const defaultFeaturedItems = getFeaturedItems(marketplaceItems);
 export const defaultAgentStacks = getAgentStacks(marketplaceItems);
 export const defaultProviders = getUniqueProviders(marketplaceItems);
 export const defaultCategories = getUniqueCategories(marketplaceItems);
+export const defaultOwners = getUniqueOwners(marketplaceItems);
+export const defaultGovernance = getUniqueGovernance(marketplaceItems);
 export const defaultCapabilities = getUniqueCapabilities(marketplaceItems);

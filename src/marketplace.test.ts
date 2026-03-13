@@ -5,7 +5,9 @@ import {
   defaultAgentStacks,
   defaultCapabilities,
   defaultCategories,
+  defaultGovernance,
   defaultMarketplaceStats,
+  defaultOwners,
   defaultProviders,
   filterMarketplaceItems,
   getContextFiltersForItem,
@@ -20,7 +22,13 @@ import {
   getKindOptionCounts,
   getMatchingMarketplacePreset,
   getMarketplaceCounterpartPreview,
+  getMarketplaceCapabilitySummaries,
   getMarketplaceKindSummaries,
+  getMarketplaceCategorySummaries,
+  getMarketplaceGovernanceSummaries,
+  getMarketplaceOwnerSummaries,
+  getMarketplaceProviderSummaries,
+  getMarketplaceStatusSummaries,
   getRelationshipContext,
   getRelationshipPreview,
   getMarketplaceStats,
@@ -42,7 +50,9 @@ const baseFilters = {
   activeCapability: 'All',
   statusFilter: 'all' as const,
   providerFilter: 'All providers',
-  categoryFilter: 'All categories'
+  categoryFilter: 'All categories',
+  ownerFilter: 'All owners',
+  governanceFilter: 'All controls'
 };
 
 test('computes marketplace stats for agents and MCP servers', () => {
@@ -91,6 +101,182 @@ test('returns empty kind summaries when a filtered slice excludes a kind entirel
   assert.equal(agentSummary.topListing, null);
   assert.equal(mcpSummary.count, 2);
   assert.equal(mcpSummary.readyCount, 1);
+});
+
+test('builds provider summaries for the current marketplace slice', () => {
+  const summaries = getMarketplaceProviderSummaries(marketplaceItems);
+
+  assert.equal(summaries[0]?.provider, 'Marketplace Verified');
+  assert.equal(summaries[0]?.count, 2);
+  assert.equal(summaries[0]?.mcpCount, 2);
+  assert.equal(summaries[0]?.agentCount, 0);
+  assert.equal(summaries[0]?.topListing?.name, 'Salesforce MCP');
+
+  assert.equal(summaries[1]?.provider, 'Symphony Core');
+  assert.equal(summaries[1]?.count, 1);
+  assert.equal(summaries[1]?.topListing?.name, 'Deal Desk Analyst');
+  assert.equal(summaries.at(-1)?.provider, 'Northstar AI');
+});
+
+test('returns only visible providers in provider summaries for a filtered slice', () => {
+  const supportSlice = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    searchValue: 'support'
+  });
+  const summaries = getMarketplaceProviderSummaries(supportSlice);
+
+  assert.deepEqual(
+    summaries.map((summary) => [summary.provider, summary.count]),
+    [['Assist Labs', 1]]
+  );
+});
+
+test('builds category summaries for the current marketplace slice', () => {
+  const summaries = getMarketplaceCategorySummaries(marketplaceItems);
+
+  assert.equal(summaries[0]?.category, 'CRM');
+  assert.equal(summaries[0]?.count, 1);
+  assert.equal(summaries[0]?.mcpCount, 1);
+  assert.equal(summaries[0]?.agentCount, 0);
+  assert.equal(summaries[0]?.topListing?.name, 'Salesforce MCP');
+
+  assert.equal(summaries[1]?.category, 'Revenue');
+  assert.equal(summaries[1]?.topListing?.name, 'Deal Desk Analyst');
+  assert.equal(summaries.at(-1)?.category, 'Compliance');
+});
+
+test('returns only visible categories in category summaries for a filtered slice', () => {
+  const pilotSlice = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    statusFilter: 'Pilot'
+  });
+  const summaries = getMarketplaceCategorySummaries(pilotSlice);
+
+  assert.deepEqual(
+    summaries.map((summary) => [summary.category, summary.count, summary.topListing?.name ?? null]),
+    [
+      ['Observability', 1, 'Datadog MCP'],
+      ['Compliance', 1, 'Risk Ops Sentinel']
+    ]
+  );
+});
+
+test('builds capability summaries for the current marketplace slice', () => {
+  const summaries = getMarketplaceCapabilitySummaries(marketplaceItems);
+  const sourceCitationSummary = summaries.find((summary) => summary.capability === 'Source citation');
+
+  assert.ok(sourceCitationSummary);
+  assert.equal(sourceCitationSummary.count, 1);
+  assert.equal(sourceCitationSummary.agentCount, 0);
+  assert.equal(sourceCitationSummary.mcpCount, 1);
+  assert.equal(sourceCitationSummary.topListing?.name, 'Confluence MCP');
+  assert.equal(summaries[0]?.capability, 'Read records');
+});
+
+test('returns only visible capabilities in capability summaries for a filtered slice', () => {
+  const revenueSlice = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    categoryFilter: 'Revenue'
+  });
+  const summaries = getMarketplaceCapabilitySummaries(revenueSlice);
+
+  assert.deepEqual(
+    summaries.map((summary) => [summary.capability, summary.count, summary.topListing?.name ?? null]),
+    [
+      ['Context summarization', 1, 'Deal Desk Analyst'],
+      ['Policy checks', 1, 'Deal Desk Analyst'],
+      ['Workflow routing', 1, 'Deal Desk Analyst']
+    ]
+  );
+});
+
+test('builds owner summaries for the current marketplace slice', () => {
+  const summaries = getMarketplaceOwnerSummaries(marketplaceItems);
+
+  assert.equal(summaries[0]?.owner, 'Enterprise Platforms');
+  assert.equal(summaries[0]?.count, 1);
+  assert.equal(summaries[0]?.agentCount, 0);
+  assert.equal(summaries[0]?.mcpCount, 1);
+  assert.equal(summaries[0]?.topListing?.name, 'Salesforce MCP');
+  assert.equal(summaries.at(-1)?.owner, 'Trust and Compliance');
+});
+
+test('returns only visible owners in owner summaries for a filtered slice', () => {
+  const verifiedMcpSlice = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    kindFilter: 'mcp',
+    providerFilter: 'Marketplace Verified'
+  });
+  const summaries = getMarketplaceOwnerSummaries(verifiedMcpSlice);
+
+  assert.deepEqual(
+    summaries.map((summary) => [summary.owner, summary.count]),
+    [
+      ['Enterprise Platforms', 1],
+      ['Knowledge Systems', 1]
+    ]
+  );
+});
+
+test('builds governance summaries for the current marketplace slice', () => {
+  const summaries = getMarketplaceGovernanceSummaries(marketplaceItems);
+
+  assert.equal(summaries[0]?.governance, 'Field-level permissions inherit CRM policy');
+  assert.equal(summaries[0]?.count, 1);
+  assert.equal(summaries[0]?.agentCount, 0);
+  assert.equal(summaries[0]?.mcpCount, 1);
+  assert.equal(summaries[0]?.topListing?.name, 'Salesforce MCP');
+  assert.equal(summaries.at(-1)?.governance, 'Evidence packet retained for 90 days');
+});
+
+test('returns only visible governance controls in governance summaries for a filtered slice', () => {
+  const knowledgeSlice = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    categoryFilter: 'Knowledge'
+  });
+  const summaries = getMarketplaceGovernanceSummaries(knowledgeSlice);
+
+  assert.deepEqual(
+    summaries.map((summary) => [summary.governance, summary.count]),
+    [
+      ['Private spaces require scoped service identities', 1],
+      ['Results include source provenance', 1]
+    ]
+  );
+});
+
+test('builds rollout-status summaries for the current marketplace slice', () => {
+  const summaries = getMarketplaceStatusSummaries(marketplaceItems);
+  const readySummary = summaries.find((summary) => summary.status === 'Ready');
+  const scalingSummary = summaries.find((summary) => summary.status === 'Scaling');
+  const pilotSummary = summaries.find((summary) => summary.status === 'Pilot');
+
+  assert.ok(readySummary);
+  assert.ok(scalingSummary);
+  assert.ok(pilotSummary);
+  assert.equal(readySummary.count, 2);
+  assert.equal(readySummary.averageTrust, 94);
+  assert.equal(readySummary.topListing?.name, 'Salesforce MCP');
+  assert.equal(scalingSummary.agentCount, 1);
+  assert.equal(scalingSummary.mcpCount, 1);
+  assert.equal(pilotSummary.topListing?.name, 'Datadog MCP');
+});
+
+test('returns zeroed rollout-status summaries when a filtered slice excludes a status entirely', () => {
+  const readySlice = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    statusFilter: 'Ready'
+  });
+  const summaries = getMarketplaceStatusSummaries(readySlice);
+  const scalingSummary = summaries.find((summary) => summary.status === 'Scaling');
+  const pilotSummary = summaries.find((summary) => summary.status === 'Pilot');
+
+  assert.ok(scalingSummary);
+  assert.ok(pilotSummary);
+  assert.equal(scalingSummary.count, 0);
+  assert.equal(scalingSummary.topListing, null);
+  assert.equal(pilotSummary.count, 0);
+  assert.equal(pilotSummary.averageTrust, 0);
 });
 
 test('builds a counterpart preview for the hidden kind under the current slice', () => {
@@ -163,7 +349,9 @@ test('preserves matching filters when focusing a hidden listing', () => {
     activeCapability: 'All',
     statusFilter: 'Scaling',
     providerFilter: 'Marketplace Verified',
-    categoryFilter: 'Knowledge'
+    categoryFilter: 'Knowledge',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
   });
 });
 
@@ -186,7 +374,9 @@ test('clears only the filters that block the focused listing', () => {
     activeCapability: 'All',
     statusFilter: 'Pilot',
     providerFilter: 'All providers',
-    categoryFilter: 'Compliance'
+    categoryFilter: 'Compliance',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
   });
 });
 
@@ -214,7 +404,9 @@ test('applies a detail pivot while preserving the selected listing when possible
     activeCapability: 'All',
     statusFilter: 'Scaling',
     providerFilter: 'Marketplace Verified',
-    categoryFilter: 'All categories'
+    categoryFilter: 'All categories',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
   });
 });
 
@@ -244,7 +436,9 @@ test('detail pivots clear only the conflicting filters after applying explicit o
     activeCapability: 'Priority prediction',
     statusFilter: 'Ready',
     providerFilter: 'All providers',
-    categoryFilter: 'Support'
+    categoryFilter: 'Support',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
   });
 });
 
@@ -274,7 +468,68 @@ test('detail status pivots preserve the selected listing while clearing incompat
     activeCapability: 'Alert history',
     statusFilter: 'Pilot',
     providerFilter: 'Telemetry Works',
-    categoryFilter: 'Observability'
+    categoryFilter: 'Observability',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
+  });
+});
+
+test('tag-driven search pivots preserve the selected listing while applying the requested search term', () => {
+  const targetItem = marketplaceItems.find((item) => item.id === 'agent-deal-desk');
+  assert.ok(targetItem);
+
+  const nextFilters = getContextFiltersForItem(
+    targetItem,
+    {
+      ...baseFilters,
+      kindFilter: 'agent',
+      statusFilter: 'Scaling',
+      providerFilter: 'Symphony Core',
+      categoryFilter: 'Revenue'
+    },
+    {
+      searchValue: 'pricing'
+    }
+  );
+
+  assert.deepEqual(nextFilters, {
+    kindFilter: 'agent',
+    searchValue: 'pricing',
+    activeCapability: 'All',
+    statusFilter: 'Scaling',
+    providerFilter: 'Symphony Core',
+    categoryFilter: 'Revenue',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
+  });
+});
+
+test('governance pivots preserve the selected listing while clearing incompatible controls', () => {
+  const targetItem = marketplaceItems.find((item) => item.id === 'mcp-docs');
+  assert.ok(targetItem);
+
+  const nextFilters = getContextFiltersForItem(
+    targetItem,
+    {
+      ...baseFilters,
+      kindFilter: 'mcp',
+      providerFilter: 'Marketplace Verified',
+      governanceFilter: 'Write operations restricted to marketplace-approved agents'
+    },
+    {
+      governanceFilter: 'Results include source provenance'
+    }
+  );
+
+  assert.deepEqual(nextFilters, {
+    kindFilter: 'mcp',
+    searchValue: '',
+    activeCapability: 'All',
+    statusFilter: 'all',
+    providerFilter: 'Marketplace Verified',
+    categoryFilter: 'All categories',
+    ownerFilter: 'All owners',
+    governanceFilter: 'Results include source provenance'
   });
 });
 
@@ -299,7 +554,9 @@ test('revealing linked listings clears only filters that conflict with the selec
     activeCapability: 'All',
     statusFilter: 'all',
     providerFilter: 'All providers',
-    categoryFilter: 'All categories'
+    categoryFilter: 'All categories',
+    ownerFilter: 'All owners',
+    governanceFilter: 'All controls'
   });
 });
 
@@ -547,6 +804,24 @@ test('filters listings by provider and category', () => {
   assert.deepEqual(filtered.map((item) => item.name), ['Confluence MCP']);
 });
 
+test('filters listings by owner', () => {
+  const filtered = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    ownerFilter: 'Knowledge Systems'
+  });
+
+  assert.deepEqual(filtered.map((item) => item.name), ['Confluence MCP']);
+});
+
+test('filters listings by governance control', () => {
+  const filtered = filterMarketplaceItems(marketplaceItems, {
+    ...baseFilters,
+    governanceFilter: 'Results include source provenance'
+  });
+
+  assert.deepEqual(filtered.map((item) => item.name), ['Confluence MCP']);
+});
+
 test('derives facet counts from the current filtered slice while excluding the active facet itself', () => {
   const providerCounts = getFacetOptionCounts(
     marketplaceItems,
@@ -580,6 +855,44 @@ test('derives facet counts from the current filtered slice while excluding the a
     { value: 'Observability', count: 0 },
     { value: 'Revenue', count: 0 },
     { value: 'Support', count: 0 }
+  ]);
+});
+
+test('derives owner counts from the current filtered slice while excluding the active owner itself', () => {
+  const ownerCounts = getFacetOptionCounts(
+    marketplaceItems,
+    {
+      ...baseFilters,
+      kindFilter: 'mcp',
+      providerFilter: 'Marketplace Verified',
+      ownerFilter: 'Knowledge Systems'
+    },
+    'owner'
+  );
+
+  assert.deepEqual(ownerCounts.filter(({ count }) => count > 0), [
+    { value: 'Enterprise Platforms', count: 1 },
+    { value: 'Knowledge Systems', count: 1 }
+  ]);
+});
+
+test('derives governance counts from the current filtered slice while excluding the active control itself', () => {
+  const governanceCounts = getFacetOptionCounts(
+    marketplaceItems,
+    {
+      ...baseFilters,
+      kindFilter: 'mcp',
+      providerFilter: 'Marketplace Verified',
+      governanceFilter: 'Results include source provenance'
+    },
+    'governance'
+  );
+
+  assert.deepEqual(governanceCounts.filter(({ count }) => count > 0), [
+    { value: 'Field-level permissions inherit CRM policy', count: 1 },
+    { value: 'Private spaces require scoped service identities', count: 1 },
+    { value: 'Results include source provenance', count: 1 },
+    { value: 'Write operations restricted to marketplace-approved agents', count: 1 }
   ]);
 });
 
@@ -623,6 +936,28 @@ test('derives sorted provider and category filter options', () => {
     'Observability',
     'Revenue',
     'Support'
+  ]);
+  assert.deepEqual(defaultOwners, [
+    'CX Engineering',
+    'Enterprise Platforms',
+    'Knowledge Systems',
+    'RevOps Automation',
+    'SRE Platform',
+    'Trust and Compliance'
+  ]);
+  assert.deepEqual(defaultGovernance, [
+    'Analyst sign-off required before closure',
+    'Audit log exported to SIEM every 15 minutes',
+    'Citations attached to quote review',
+    'Escalates sev-1 changes to on-call lead',
+    'Evidence packet retained for 90 days',
+    'Field-level permissions inherit CRM policy',
+    'Human approval required above 20% discount',
+    'Masks customer PII in suggested replies',
+    'Private spaces require scoped service identities',
+    'Production mutating actions disabled',
+    'Results include source provenance',
+    'Write operations restricted to marketplace-approved agents'
   ]);
 });
 
